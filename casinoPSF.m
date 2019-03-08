@@ -1,6 +1,6 @@
 function [  psf] = casinoPSF(  )
 %function [  ] = casinoPSF(  )
-%   Extracts a point spread function from a dataset generated using Casino
+%   Extracts a point spread function from a dataset generated using Casino.
 %   http://www.gel.usherbrooke.ca/casino/What.html
 %
 %   You should run your simulation and save the data. Open the datafile in
@@ -8,8 +8,11 @@ function [  psf] = casinoPSF(  )
 %
 %   This function assumes that the top layer of your simulation is labeled
 %   'PMMA' and calculates home much energy is deposited in the PMMA as
-%   a function of position. You should simulated something like 10000
-%   electrons, and the excel file will be ~75MB.
+%   a function of position. You should simulate something like 10000
+%   electrons. The excel file should be approximately ~75MB.
+%   
+%   TODO:
+%   Add support for loading Casino files without intermediate excel step.
 
 %load file
 fprintf('Loading excel data file. This can take a while...');
@@ -19,7 +22,7 @@ fprintf('done.\n');
 
 % Find the energy deposited in the pmma vs lateral position.
 fprintf('Counting electrons...');
-dr=2; %spaceing in nanometers for the simulation
+dr=2; %spacing in nanometers for the simulation
 rvals=(1:dr:10000);
 evals=rvals.*0;
 count=0; %counts the number of collisions in the pmma that were included in the loop.
@@ -49,6 +52,7 @@ fprintf('done.\n');
 %
 %figure(333); clf; loglog(rvals,evals);
 
+%Fit the data on a log log scale.
 fitfn=@(p,x) p(1)/(1+p(2)).*((1/(pi*p(3)^2)).*exp(-x.^2/p(3).^2)+p(2)/(pi*p(4)^2)*exp(-x.^2/p(4).^2));
 
 beta=[10000 .7 10 2000];

@@ -1,22 +1,57 @@
-function [  ] = urpec(  )
-% function [  ] = urpec(  )
-% Generates a proximity-effect-corrected dxf file based on an input point
-% spread function. Right now this is intended for use with NPGS.
+function [  ] = urpec( config )
+% function [  ] = urpec( config )
+% Generates a proximity-effect-corrected .dxf file for electron beam lithography.
+% The corrected file is created by deconvolving a point spread function from an input .dxf pattern file.
+% The output file has different layers, each of which should receive a different dose.
+% This function assumes that one unit in the input pattern file is one
+% micron.
+%
+% Right now this is intended for use with NPGS.
+%
+% config is an optional struct with the following optional fields:
+%
+% dx: spacing in units of microns for the deconvolution. The default is
+% 0.01 mcirons
+%
+% subfieldSize: size of subfields in fracturing. Default is 50 points. This
+% is necessary for NPGS because the maximum polygon size in designCAD is
+% 200 points.
+%
+% maxIter: maximum number of iterations for the deconvolution. Default is
+% 6.
+%
+% dvals: doses corresponding to the layers in the output file. Default is
+% 1, 1.1, 1.2, ... , 2.4 in units of the dose to clear.
+%
+% call this function without any arguments, or via
+% urpec(struct('dx',0.005, 'subfieldSize',20,'maxIter',6,'dvals',[1:.2:2.4]))
+% for example
+%
+%
+% By:
 % Adina Ripin aripin@u.rochester.edu
 % Elliot Connors econnors@ur.rochester.edu
 % John Nichol jnich10@ur.rochester.edu
-% COMMENTS/TO DO:
-%make the run file?
-%Different options. Alignment, dose test. Need to input mag,
-%current, etc.
+%
+% TODO:
+% Add code to make the run file?
+% Add support for different pattern file formats?
 
 debug=0;
 
-fprintf('urpec is running...\n');
+if ~exist('config','var')
+    config=struct();
+end
 
-%grid spacing for the computation
-gridspaceSEM = 0.010;
-spc = gridspaceSEM;
+config = def(config,'dx',.01);   %Grid spacing in microns
+config = def(config,'subfieldSize',50);  %subfield size in microns
+config = def(config,'maxIter',6);  %max number of iterations for the deconvolution
+config = def(config,'dvals',[1:.1:2.4]);  %doses corresponding to output layers, in units of dose to clear
+
+dx = config.dx;
+subfieldSize=config.subfieldSize;
+
+fprintf('urpec is running...\n');
 
 %choose and load file
 fprintf('Select your dxf file.\n')
@@ -101,8 +136,8 @@ maxY = max(medall(:,3));
 minX = min(medall(:,2));
 minY = min(medall(:,3));
 
-x = minX:spc:maxX;
-y = minY:spc:maxY;
+x = minX:dx:maxX;
+y = minY:dx:maxY;
 [X,Y] = meshgrid(x, y);
 [m,n] = size(X);
 
@@ -111,32 +146,32 @@ for i = 3:object_num
     sm_all = vertcat(sm_all, out.smallobj{i});
 end
 
-fprintf(['Creating 2D binary grid spanning medium feature write field (spacing = ', num2str(gridspaceSEM), '). This can take a few minutes...']);
+fprintf(['Creating 2D binary grid spanning medium feature write field (spacing = ', num2str(dx), '). This can take a few minutes...']);
 %polygon distribution - creating binary grid of x,y points that are 1 if
 %in a polygon or 0 if not
 
 %Make the simulation area bigger to account for proximity effects
-padSize=ceil(5/gridspaceSEM).*gridspaceSEM;
-padPoints=padSize/gridspaceSEM;
+padSize=ceil(5/dx).*dx;
+padPoints=padSize/dx;
 maxX=maxX+padSize;
 minX=minX-padSize;
 maxY=maxY+padSize;
 minY=minY-padSize;
 
-xp = minX:gridspaceSEM:maxX;
-yp = minY:gridspaceSEM:maxY;
+xp = minX:dx:maxX;
+yp = minY:dx:maxY;
 
-%make sure the sizes are odd. This is important for deconvolving the psf
+%make sure the number of points is odd. This is important for deconvolving the psf
 if ~mod(length(xp),2)
-    maxX=maxX+gridspaceSEM;
+    maxX=maxX+dx;
 end
 
 if ~mod(length(yp),2)
-    maxY=maxY+gridspaceSEM;
+    maxY=maxY+dx;
 end
 
-xp = minX:gridspaceSEM:maxX;
-yp = minY:gridspaceSEM:maxY;
+xp = minX:dx:maxX;
+yp = minY:dx:maxY;
 [XP, YP] = meshgrid(xp, yp);
 [mp, np] = size(XP);
 
@@ -157,11 +192,10 @@ end
 med_field_width_x = maxX-minX;
 med_field_width_y = maxY-minY;
 
-
 sm_field_width_x = 3;%micron
 sm_field_width_y = sm_field_width_x;
-sm_field_x_ind = round(sm_field_width_x/gridspaceSEM);
-sm_field_y_ind = round(sm_field_width_y/gridspaceSEM);
+sm_field_x_ind = round(sm_field_width_x/dx);
+sm_field_y_ind = round(sm_field_width_y/dx);
 
 [xpts ypts] = size(polysbin);
 sm_x_min = round((ypts/2)-sm_field_x_ind);
@@ -170,7 +204,6 @@ sm_y_min = round((xpts/2)-sm_field_y_ind);
 sm_y_max = round((xpts/2)+sm_field_y_ind);
 
 fprintf('done analyzing file.\n')
-
 
 fprintf('Select point spread function file.\n')
 load(uigetfile('*PSF*'));
@@ -183,16 +216,16 @@ beta=psf.beta;
 psfRange=psf.range;
 descr=psf.descr;
 
-%psf is overwritten below
-npsf=round(psfRange./gridspaceSEM);
-psf=zeros(round(psfRange./gridspaceSEM));
+%psf changes definition immediately below
+npsf=round(psfRange./dx);
+psf=zeros(round(psfRange./dx));
 [xpsf ypsf]=meshgrid([-npsf:1:npsf],[-npsf:1:npsf]);
-xpsf=xpsf.*gridspaceSEM;
-ypsf=ypsf.*gridspaceSEM;
+xpsf=xpsf.*dx;
+ypsf=ypsf.*dx;
 rpsf2=xpsf.^2+ypsf.^2;
 psf=1/(1+eta).*(1/(pi*alpha^2).*exp(-rpsf2./alpha.^2)+eta/(pi*beta^2).*exp(-rpsf2./beta.^2));
 
-%get the sizes right Zero pad to at least 10um x 10 um;
+%Zero pad to at least 10um x 10 um;
 %pad in the x direction
 xpad=size(polysbin,1)-size(psf,1);
 if xpad>0
@@ -201,6 +234,7 @@ elseif xpad<0
     polysbin=padarray(polysbin,[-xpad/2,0],0,'both');
 end
 
+%pad in the y direction
 ypad=size(polysbin,2)-size(psf,2);
 if ypad>0
     psf=padarray(psf,[0,ypad/2],0,'both');
@@ -208,18 +242,17 @@ elseif ypad<0
     polysbin=padarray(polysbin,[0,-ypad/2],0,'both');
 end
 
-%pad in the y direction
-%psf=padarray(psf,[(size(polysbin,1)-size(psf,1))/2,(size(polysbin,2)-size(psf,2))/2],0,'both');
+%normalize
 psf=psf./sum(psf(:));
 
 dstart=polysbin;
-shape=polysbin>0;
+shape=polysbin>0; %1 inside shapes and 0 everywhere else
 
 dose=dstart;
 doseNew=shape; %initial guess at dose. Just the dose to clear everywhere
 
 %iterate on convolving the psf, and add the difference between actual dose and desired dose to the programmed dose
-for i=1:6
+for i=1:config.maxIter
     %doseActual=ifft2(fft2(doseNew.*polysbin).*fft2(psf)); %convolve with the point spread function, taking into account places that are dosed twice
     doseActual=ifft2(fft2(doseNew).*fft2(psf));
     doseActual=fftshift(doseActual);
@@ -230,7 +263,7 @@ for i=1:6
     imagesc(doseActual);
     title('Actual dose (relative to dose to clear)');
     
-    doseNew=doseNew+(shape-doseShape); %crude attempt at deconvolving the psf. Add the difference between the desired dose and the actual dose to the shape dose.
+    doseNew=doseNew+(shape-doseShape); %Deonvolution: add the difference between the desired dose and the actual dose to the shape dose.
     subplot(1,2,1);
     imagesc(doseNew);
     title('Programmed dose (relative to dose to clear)');
@@ -255,17 +288,10 @@ fprintf('Fracturing...\n')
 doseNew(doseNew==0)=NaN;
 doseNew(doseNew<0)=NaN;
 
-%use hist to make intelligent guesses for the dose levels
-%[N,X]=hist(doseNew(:),nlayers);
-
-dvals=[1:.1:2.4];
+dvals=config.dvals;
 nlayers=length(dvals);
-X=dvals;
-
-dx=X(2)-X(1);
-dvals=X;
-dvalsl=X-dx;
-dvalsr=X;
+dvalsl=dvals-(dvals(2)-dvals(1));
+dvalsr=dvals;
 layer=[];
 figSize=ceil(sqrt(nlayers));
 for i=1:length(dvals);
@@ -286,16 +312,15 @@ for i=1:length(dvals);
     end
     
     %break into subfields and find boundaries. This is necessary because
-    %designCAD can only handle polygons with less than ~200 points.
-    subfieldSize=50;
-    
+    %designCAD can only handle polygons with less than ~200 points.    
     xsubfields=ceil(mp/subfieldSize);
     ysubfields=ceil(np/subfieldSize);
     
     layer(i).boundaries={};
     count=1;
     
-    %Current configuration has NPGS write in vertical lines.
+    %Current configuration has NPGS write in vertical lines. Use commented
+    %code below to change to horizontal writing.
     for n=1:1:ysubfields %m=1:1:xsubfields
         for m=1:1:xsubfields %n=1:1:ysubfields
             subfield=zeros(mp,np);
@@ -310,32 +335,31 @@ for i=1:length(dvals);
             xinds=reshape([xinds;xinds],[1 2*length(xinds)]);
             yinds=reshape([yinds;yinds],[1 2*length(yinds)]);
             
-            
             subdata=layer(i).shotMap(xinds,yinds);
             
             if (sum(subdata(:)))>0
                 
                 [B,L,nn,A]=bwboundaries(subdata);
                 
-                %Uncomment to inspect boundaries in subfields.
-                %                 figure(777); clf; hold on
-                %                 fprintf('Layer %d subfield (%d,%d) \n',i,m,n);
-                %                 for j=1:length(B)
-                %                     try
-                %                     bb=B{j};
-                %                     subplot(1,2,1); hold on;
-                %                     plot(bb(:,2),bb(:,1))
-                %                     axis([0 subfieldSize 0 subfieldSize]);
-                %                     subplot(1,2,2)
-                %                     imagesc(subdata); set(gca,'YDir','norm')
-                %                     axis([0 subfieldSize 0 subfieldSize]);
-                %                     end
-                %                     pause(1)
-                %
-                %                 end
-                %                 drawnow;
-                %                 pause(1);
-                
+                if debug
+                    figure(777); clf; hold on
+                    fprintf('Layer %d subfield (%d,%d) \n',i,m,n);
+                    for j=1:length(B)
+                        try
+                            bb=B{j};
+                            subplot(1,2,1); hold on;
+                            plot(bb(:,2),bb(:,1))
+                            axis([0 subfieldSize 0 subfieldSize]);
+                            subplot(1,2,2)
+                            imagesc(subdata); set(gca,'YDir','norm')
+                            axis([0 subfieldSize 0 subfieldSize]);
+                        end
+                        pause(1)
+                        
+                    end
+                    drawnow;
+                    pause(1);
+                end                
                 
                 if ~isempty(B)
                     for b=1:length(B)
@@ -415,8 +439,8 @@ for i=length(dvals):-1:1
     FID=dxf_set(FID,'Color',ctab{i},'Layer',i);
     for j=1:length(layer(i).boundaries)
         bb=layer(i).boundaries{j};
-        X=bb(:,2).*gridspaceSEM+minXExp;
-        Y=bb(:,1).*gridspaceSEM+minYExp;
+        X=bb(:,2).*dx+minXExp;
+        Y=bb(:,1).*dx+minYExp;
         Z=X.*0;
         dxf_polyline(FID,X,Y,Z);
     end
@@ -424,7 +448,6 @@ for i=length(dvals):-1:1
 end
 
 dxf_close(FID);
-
 
 %Save doses here
 doseFileName=[pathname filename(1:end-4) '_' descr '.txt'];
@@ -437,5 +460,12 @@ fprintf('Finished exporting.\n')
 
 fprintf('urpec is finished.\n')
 
+end
+
+% Apply a default.
+function s=def(s,f,v)
+  if(~isfield(s,f))
+      s=setfield(s,f,v);
+  end
 end
 
