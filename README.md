@@ -12,10 +12,15 @@ Current PSFs available are for use with Si and GaAs substrates at 30 kV. If you 
 Casino can be found here:
 http://www.gel.usherbrooke.ca/casino/What.html
 
+dxf_set and dxf_polyline are (c) Grzegorz Kwiatek
+
+dxf2coord_20 is written by Lukas Wischounig   
+
+fitwrap is (c) Hendrik Bluhm
+
 TODO:
 Add the capability to generate an NPGS run file.
-Add support for other file formats?
-
+Add support for other file formats, like GDSII.
 
 
 
