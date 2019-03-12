@@ -162,6 +162,9 @@ y = minY:dx:maxY;
 [X,Y] = meshgrid(x, y);
 [m,n] = size(X);
 
+%TODO: add something to change dx if the arrays are too large or too small.
+%Arrays of 5000x5000 points seem to take a reasonable amount of time.
+
 if isfield(out,'smallobj')
     sm_all = vertcat(out.smallobj{1}, out.smallobj{2});
     for i = 3:object_num
