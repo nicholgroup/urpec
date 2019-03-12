@@ -21,7 +21,7 @@ function [  ] = urpec( config )
 %   6.
 %
 %   dvals: doses corresponding to the layers in the output file. Default is
-%   1, 1.1, 1.2, ... , 2.4 in units of the dose to clear.
+%   1, 1.1, 1.9 in units of the dose to clear.
 %   
 %   windowVal: smoothing distance for the dose modulation. Units are
 %   approximately the grid spacing. Default is 10.
