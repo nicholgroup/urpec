@@ -27,6 +27,8 @@ function [  ] = urpec( config )
 % urpec(struct('dx',0.005, 'subfieldSize',20,'maxIter',6,'dvals',[1:.2:2.4]))
 % for example
 %
+% More options to come.
+%
 %
 % By:
 % Adina Ripin aripin@u.rochester.edu
