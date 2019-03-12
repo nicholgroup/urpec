@@ -37,6 +37,9 @@ function [  ] = urpec( config )
 % Add code to make the run file?
 % Add support for different pattern file formats?
 
+
+addpath('dxflib');
+
 debug=0;
 
 if ~exist('config','var')
@@ -120,11 +123,23 @@ end
 
 display(['dxf CAD file analyzed.']);
 
-medall = vertcat(out.medobj{1}, out.medobj{2});
-for i = 3:object_num
-    medall = vertcat(medall, out.medobj{i});
+% EJC: edit to treat large features as medium if nothing below lg/med
+% threshold
+if isfield(out,'medobj')
+    medall = vertcat(out.medobj{1}, out.medobj{2});
+    for i = 3:object_num
+        medall = vertcat(medall, out.medobj{i});
+    end
+else
+    try
+        out.medobj=out.largeobj;
+        out.largeobj='to med obj';
+        medall = vertcat(out.medobj{1}, out.medobj{2});
+        for i=3:object_num
+            medall = vertcat(medall, out.medobj{i});
+        end
+    end
 end
-
 
 medall=vertcat(objects{1},objects{2});
 for i = 3:object_num
@@ -141,9 +156,11 @@ y = minY:dx:maxY;
 [X,Y] = meshgrid(x, y);
 [m,n] = size(X);
 
-sm_all = vertcat(out.smallobj{1}, out.smallobj{2});
-for i = 3:object_num
-    sm_all = vertcat(sm_all, out.smallobj{i});
+if isfield(out,'smallobj')
+    sm_all = vertcat(out.smallobj{1}, out.smallobj{2});
+    for i = 3:object_num
+        sm_all = vertcat(sm_all, out.smallobj{i});
+    end
 end
 
 fprintf(['Creating 2D binary grid spanning medium feature write field (spacing = ', num2str(dx), '). This can take a few minutes...']);
@@ -178,7 +195,14 @@ yp = minY:dx:maxY;
 totgridpts = length(xp)*length(yp);
 polysbin = zeros(size(XP));
 
-out.newmedobj = out.medobj(~cellfun('isempty', out.medobj));
+% if ~isfield(out, 'medobj')
+%     try
+%         out.newmedobj = out.largeobj(~cellfun('isempty',out.largeobj));
+%     end
+% else
+%     out.newmedobj = out.medobj(~cellfun('isempty', out.medobj));
+% end
+out.newmedobj=out.medobj(~cellfun('isempty',out.medobj));
 [mm, nm] = size(out.newmedobj);
 
 for ar = 1:length(objects) %EJC 5/5/2018: run time (should) scale ~linearly~ with med/sm object num
@@ -225,21 +249,29 @@ ypsf=ypsf.*dx;
 rpsf2=xpsf.^2+ypsf.^2;
 psf=1/(1+eta).*(1/(pi*alpha^2).*exp(-rpsf2./alpha.^2)+eta/(pi*beta^2).*exp(-rpsf2./beta.^2));
 
+%make a window to prevent ringing;
+ww=exp(-(rpsf2./(maxX/2)).^2);
+
 %Zero pad to at least 10um x 10 um;
 %pad in the x direction
 xpad=size(polysbin,1)-size(psf,1);
 if xpad>0
     psf=padarray(psf,[xpad/2,0],0,'both');
+    ww=padarray(ww,[xpad/2,0],0,'both');
 elseif xpad<0
     polysbin=padarray(polysbin,[-xpad/2,0],0,'both');
+    ww=padarray(ww,[-xpad/2,0],0,'both');
 end
 
 %pad in the y direction
 ypad=size(polysbin,2)-size(psf,2);
 if ypad>0
     psf=padarray(psf,[0,ypad/2],0,'both');
+    ww=padarray(ww,[0,ypad/2],0,'both');
+    
 elseif ypad<0
     polysbin=padarray(polysbin,[0,-ypad/2],0,'both');
+    ww=padarray(ww,[0,-ypad/2],0,'both'); 
 end
 
 %normalize
@@ -255,7 +287,9 @@ doseNew=shape; %initial guess at dose. Just the dose to clear everywhere
 for i=1:config.maxIter
     %doseActual=ifft2(fft2(doseNew.*polysbin).*fft2(psf)); %convolve with the point spread function, taking into account places that are dosed twice
     doseActual=ifft2(fft2(doseNew).*fft2(psf));
-    doseActual=fftshift(doseActual);
+    %doseActual=ifft2(fft2(doseNew).*fft2(psf).*fftshift(ww)); %use window to avoid ringing
+
+    doseActual=real(fftshift(doseActual));
     doseShape=doseActual.*shape; %total only given to shapes. Excludes area outside shapes. We don't actually care about this.
     
     figure(556); clf;
@@ -312,20 +346,53 @@ for i=1:length(dvals);
     end
     
     %break into subfields and find boundaries. This is necessary because
-    %designCAD can only handle polygons with less than ~200 points.    
-    xsubfields=ceil(mp/subfieldSize);
-    ysubfields=ceil(np/subfieldSize);
+    %designCAD can only handle polygons with less than ~200 points.
+    
+    subfieldSize = config.subfieldSize;
     
     layer(i).boundaries={};
     count=1;
     
-    %Current configuration has NPGS write in vertical lines. Use commented
-    %code below to change to horizontal writing.
-    for n=1:1:ysubfields %m=1:1:xsubfields
-        for m=1:1:xsubfields %n=1:1:ysubfields
+
+    decrease = 0;
+    disp = 0;
+    m=1;
+    n=1;
+    xsubfields=ceil(mp/subfieldSize);
+    ysubfields=ceil(np/subfieldSize);
+    decrease_sub = 1;
+    while (n <= ysubfields)    %change to x subfields for horizontal writing
+        %decrease_sub=1;
+        m = 1;
+        %decrease_sub = 1;
+        while (m <= xsubfields) %change to ysubfields for horizontal writing
+            %EJC: add decrease_sub factor for halving sub field size when polygons are large
+            if decrease
+                subfieldSize = round(subfieldSize/decrease_sub);
+                decrease = 0;
+                disp = 0;
+            end
+            xsubfields=ceil(mp/subfieldSize);
+            ysubfields=ceil(np/subfieldSize);
+            if ~disp
+                display(['trying subfield size of ' num2str(subfieldSize) '. There are a total of ' num2str(xsubfields*ysubfields) ' subfields...']);
+                disp = 1;
+            end
+            proceed = 0;
+            %for n=1:1:ysubfields %m=1:1:xsubfields
+            %for m=1:1:xsubfields %n=1:1:ysubfields
             subfield=zeros(mp,np);
-            xinds=(m-1)*subfieldSize+1:1:min(m*subfieldSize,mp);
-            yinds=(n-1)*subfieldSize+1:1:min(n*subfieldSize,np);
+            %display(['Trying subfield size: ' num2str(mp/decrease_sub) 'x' num2str(np/decrease_sub)]);
+            if (m-1)*subfieldSize+1<min(m*subfieldSize,mp)
+                xinds=(m-1)*subfieldSize+1:1:min(m*subfieldSize,mp);
+            else
+                xinds=(m-1)*subfieldSize+1:1:min(m*subfieldSize,mp);
+            end
+            if (n-1)*subfieldSize+1 < min(n*subfieldSize,np)
+                yinds=(n-1)*subfieldSize+1:1:min(n*subfieldSize,np);
+            else
+                yinds=(n-1)*subfieldSize+1:1:min(n*subfieldSize,np);
+            end
             
             xstart=xinds(1);
             ystart=yinds(1);
@@ -359,7 +426,7 @@ for i=1:length(dvals);
                     end
                     drawnow;
                     pause(1);
-                end                
+                end
                 
                 if ~isempty(B)
                     for b=1:length(B)
@@ -384,16 +451,41 @@ for i=1:length(dvals);
                             B{b}=simplify_polygon(B{b});
                             
                             %check for large polygons
-                            if size(B{b},1)>200
-                                fprintf('Large boundaries in layer %d. Consider decreasing subfield size. \n',i);
+                            if size(B{b},1)>200%200
+                                fprintf('Large boundaries in layer %d. Halving subfield size and retrying... \n',i);
+                                %TODO:if large boundaries, i=i-1,
+                                %subfieldSize=subfieldSize/2; and then don't
+                                %execute the next lines.
+                                decrease_sub = decrease_sub + 1;
+                                proceed = 0;
+                                decrease = 1;
+                                disp = 0;
+                                m = 1;
+                                n = 1;
+                                count = 1;
+                                layer(i).boundaries = {};
+                                %anybad = 1;
+                            elseif ~decrease
+                                decrease_sub = 1;
+                                proceed = 1;
                             end
                             
-                            layer(i).boundaries(count)={B{b}/2+repmat([xstart,ystart],[size(B{b},1),1])}; %divide by two because we doubled the size of the shot map
-                            count=count+1;
+                            if proceed
+                                layer(i).boundaries(count)={B{b}/2+repmat([xstart,ystart],[size(B{b},1),1])}; %divide by two because we doubled the size of the shot map
+                                count=count+1;
+                            end
                         end
                     end
                 end
+            else
+                proceed = 1;
             end
+            if proceed
+                m = m+1;
+            end
+        end
+        if proceed
+            n = n+1;
         end
     end
     
@@ -436,7 +528,7 @@ ctab={[1 0 0] [0 1 0] [0 0 1] [1 1 0] [1 0 1] [0 1 1] [1 0 0] [0 1 0] [0 0 1] [1
 
 for i=length(dvals):-1:1
     fprintf('Writing layer %d...',i)
-    FID=dxf_set(FID,'Color',ctab{i},'Layer',i);
+    FID=dxf_set(FID,'Color',ctab{i}.*255,'Layer',i); % EJC: ctab{i} to ctab{i}.*255 (3/8/2019)
     for j=1:length(layer(i).boundaries)
         bb=layer(i).boundaries{j};
         X=bb(:,2).*dx+minXExp;
@@ -458,14 +550,16 @@ fclose(fileID);
 
 fprintf('Finished exporting.\n')
 
+rmpath('dxflib');
+
 fprintf('urpec is finished.\n')
 
 end
 
 % Apply a default.
 function s=def(s,f,v)
-  if(~isfield(s,f))
-      s=setfield(s,f,v);
-  end
+if(~isfield(s,f))
+    s=setfield(s,f,v);
+end
 end
 

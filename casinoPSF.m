@@ -122,18 +122,18 @@ save(outputFileName,'psf');
 % %GaAs 30 kV with 200 nm pmma:
 % eta=1.7
 % alpha=14 nm
-% beta=1.56 nm
+% beta=1.56 um
 % 
 % 
 % % GaAs 30 kV with 400 nm pmma
 % eta=1.5
 % alpha=28 nm
-% beta=1.74 nm
+% beta=1.74 um
 % 
 % % Si 30 kV with 200 nm pmma
 % eta=1
 % alpha=13 nm
-% beta=3.97um
+% beta=3.97 um
 % 
 % % Si 30 kV with 400 nm pmma
 % eta=0.9
