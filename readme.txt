@@ -38,3 +38,5 @@ TODO:
 4. The layer boundaries don't touch. The are separated by half the pixel size. Not a huge deal, but it would be nice to fix.
 5. Be smart about the grid size
 6. Be smart about the subfield size
+
+templates test
