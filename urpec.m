@@ -10,24 +10,25 @@ function [  ] = urpec( config )
 %
 % config is an optional struct with the following optional fields:
 %
-% dx: spacing in units of microns for the deconvolution. The default is
-% 0.01 mcirons
+%   dx: spacing in units of microns for the deconvolution. The default is
+%   0.01 mcirons
 %
-% subfieldSize: size of subfields in fracturing. Default is 50 points. This
-% is necessary for NPGS because the maximum polygon size in designCAD is
-% 200 points.
+%   subfieldSize: size of subfields in fracturing. Default is 50 points. This
+%   is necessary for NPGS because the maximum polygon size in designCAD is
+%   200 points.
 %
-% maxIter: maximum number of iterations for the deconvolution. Default is
-% 6.
+%   maxIter: maximum number of iterations for the deconvolution. Default is
+%   6.
 %
-% dvals: doses corresponding to the layers in the output file. Default is
-% 1, 1.1, 1.2, ... , 2.4 in units of the dose to clear.
+%   dvals: doses corresponding to the layers in the output file. Default is
+%   1, 1.1, 1.2, ... , 2.4 in units of the dose to clear.
+%   
+%   windowVal: smoothing distance for the dose modulation. Units are
+%   approximately the grid spacing. Default is 10.
 %
 % call this function without any arguments, or via
 % urpec(struct('dx',0.005, 'subfieldSize',20,'maxIter',6,'dvals',[1:.2:2.4]))
 % for example
-%
-% More options to come.
 %
 %
 % By:
@@ -39,6 +40,7 @@ function [  ] = urpec( config )
 % Add code to make the run file?
 % Add support for different pattern file formats?
 
+tic
 
 addpath('dxflib');
 
@@ -51,7 +53,9 @@ end
 config = def(config,'dx',.01);   %Grid spacing in microns
 config = def(config,'subfieldSize',50);  %subfield size in microns
 config = def(config,'maxIter',6);  %max number of iterations for the deconvolution
-config = def(config,'dvals',[1:.1:2.4]);  %doses corresponding to output layers, in units of dose to clear
+config = def(config,'dvals',[1:.1:1.9]);  %doses corresponding to output layers, in units of dose to clear
+config = def(config,'windowVal',10);  %Smoothing factor for the dose modultion. Default is 10. Units are approximately the grid spacing.
+
 
 dx = config.dx;
 subfieldSize=config.subfieldSize;
@@ -251,30 +255,33 @@ ypsf=ypsf.*dx;
 rpsf2=xpsf.^2+ypsf.^2;
 psf=1/(1+eta).*(1/(pi*alpha^2).*exp(-rpsf2./alpha.^2)+eta/(pi*beta^2).*exp(-rpsf2./beta.^2));
 
-%make a window to prevent ringing;
-ww=exp(-(rpsf2./(maxX/2)).^2);
+
 
 %Zero pad to at least 10um x 10 um;
 %pad in the x direction
 xpad=size(polysbin,1)-size(psf,1);
 if xpad>0
     psf=padarray(psf,[xpad/2,0],0,'both');
-    ww=padarray(ww,[xpad/2,0],0,'both');
 elseif xpad<0
     polysbin=padarray(polysbin,[-xpad/2,0],0,'both');
-    ww=padarray(ww,[-xpad/2,0],0,'both');
 end
 
 %pad in the y direction
 ypad=size(polysbin,2)-size(psf,2);
 if ypad>0
-    psf=padarray(psf,[0,ypad/2],0,'both');
-    ww=padarray(ww,[0,ypad/2],0,'both');
-    
+    psf=padarray(psf,[0,ypad/2],0,'both');    
 elseif ypad<0
     polysbin=padarray(polysbin,[0,-ypad/2],0,'both');
-    ww=padarray(ww,[0,-ypad/2],0,'both'); 
 end
+
+%make a window to prevent ringing;
+wind=psf.*0;
+xwind=(size(psf,1)-1)/2;
+ywind=(size(psf,2)-1)/2;
+rw=min([xwind,ywind]);
+[xw yw]=meshgrid([-xwind:1:xwind],[-ywind:1:ywind]);
+wind=exp(-(xw.^2+yw.^2)./(rw/config.windowVal).^2);
+wind=wind';
 
 %normalize
 psf=psf./sum(psf(:));
@@ -288,8 +295,8 @@ doseNew=shape; %initial guess at dose. Just the dose to clear everywhere
 %iterate on convolving the psf, and add the difference between actual dose and desired dose to the programmed dose
 for i=1:config.maxIter
     %doseActual=ifft2(fft2(doseNew.*polysbin).*fft2(psf)); %convolve with the point spread function, taking into account places that are dosed twice
-    doseActual=ifft2(fft2(doseNew).*fft2(psf));
-    %doseActual=ifft2(fft2(doseNew).*fft2(psf).*fftshift(ww)); %use window to avoid ringing
+    %doseActual=ifft2(fft2(doseNew).*fft2(psf));
+    doseActual=ifft2(fft2(doseNew).*fft2(psf).*fftshift(wind)); %use window to avoid ringing
 
     doseActual=real(fftshift(doseActual));
     doseShape=doseActual.*shape; %total only given to shapes. Excludes area outside shapes. We don't actually care about this.
@@ -297,12 +304,12 @@ for i=1:config.maxIter
     figure(556); clf;
     subplot(1,2,2);
     imagesc(doseActual);
-    title('Actual dose (relative to dose to clear)');
+    title(sprintf('Actual dose. Iteration %d',i));
     
     doseNew=doseNew+(shape-doseShape); %Deonvolution: add the difference between the desired dose and the actual dose to the shape dose.
     subplot(1,2,1);
     imagesc(doseNew);
-    title('Programmed dose (relative to dose to clear)');
+    title(sprintf('Programmed dose. Iteration %d',i));
     
     drawnow;
 end
@@ -321,6 +328,7 @@ fprintf('done.\n')
 
 fprintf('Fracturing...\n')
 
+%I forget why this is needed?
 doseNew(doseNew==0)=NaN;
 doseNew(doseNew<0)=NaN;
 
@@ -330,8 +338,9 @@ dvalsl=dvals-(dvals(2)-dvals(1));
 dvalsr=dvals;
 layer=[];
 figSize=ceil(sqrt(nlayers));
+dvalsAct=[];
 for i=1:length(dvals);
-    fprintf('layer %d...',i);
+    fprintf('layer %d...\n',i);
     
     %Compute shot map for each layer
     if i==1
@@ -347,6 +356,18 @@ for i=1:length(dvals);
         layer(i).dose=(dvalsl(i)+dvalsr(i))/2;
     end
     
+    %Compute the actual mean dose in the layer.
+    dd=doseNew;
+    dd(isnan(dd))=0;
+    doseSum= sum(sum(layer(i).shotMap));
+    if doseSum>0
+        layer(i).meanDose=sum(sum(layer(i).shotMap.*dd))/sum(sum(layer(i).shotMap));
+        dvalsAct(i)=layer(i).meanDose;
+    else
+        layer(i).meanDose=dvals(i);
+        dvalsAct(i)=dvals(i);
+    end
+    
     %break into subfields and find boundaries. This is necessary because
     %designCAD can only handle polygons with less than ~200 points.
     
@@ -355,7 +376,6 @@ for i=1:length(dvals);
     layer(i).boundaries={};
     count=1;
     
-
     decrease = 0;
     disp = 0;
     m=1;
@@ -458,9 +478,9 @@ for i=1:length(dvals);
                                 %TODO:if large boundaries, i=i-1,
                                 %subfieldSize=subfieldSize/2; and then don't
                                 %execute the next lines.
+                                decrease = 1;
                                 decrease_sub = decrease_sub + 1;
                                 proceed = 0;
-                                decrease = 1;
                                 disp = 0;
                                 m = 1;
                                 n = 1;
@@ -476,6 +496,12 @@ for i=1:length(dvals);
                                 layer(i).boundaries(count)={B{b}/2+repmat([xstart,ystart],[size(B{b},1),1])}; %divide by two because we doubled the size of the shot map
                                 count=count+1;
                             end
+                        end
+                        
+                        %Break out of looping over boundaries if there are
+                        %large boundaries
+                        if proceed==0
+                            break
                         end
                     end
                 end
@@ -547,7 +573,7 @@ dxf_close(FID);
 doseFileName=[pathname filename(1:end-4) '_' descr '.txt'];
 
 fileID = fopen(doseFileName,'w');
-fprintf(fileID,'%3.3f \r\n',dvals);
+fprintf(fileID,'%3.3f \r\n',dvalsAct);
 fclose(fileID);
 
 fprintf('Finished exporting.\n')
@@ -555,6 +581,8 @@ fprintf('Finished exporting.\n')
 rmpath('dxflib');
 
 fprintf('urpec is finished.\n')
+
+toc
 
 end
 
