@@ -477,14 +477,15 @@ for i=1:length(dvals);
                                 %subtract 1/2 because we smeared out the
                                 %shot map by 1/2 of an original pixel
                                 %Subtract 1/2 again because of the way we
-                                %doubled the size of the matrixur
+                                %doubled the size of the matrix.
                                 layer(i).boundaries(count)={B{b}/2-1/2-1/2+repmat([xstart,ystart],[size(B{b},1),1])}; 
+
                                 count=count+1;
                             end
                         end
                         
                         %Break out of looping over boundaries if there are
-                        %large boundaries
+                        %large boundaries and we need to restart
                         if proceed==0
                             break
                         end
