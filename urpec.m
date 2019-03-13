@@ -68,8 +68,6 @@ subfieldSize=config.subfieldSize;
 
 fprintf('urpec is running...\n');
 
-
-
 if isempty(config.file)
     %choose and load file
     fprintf('Select your dxf file.\n')
@@ -478,7 +476,9 @@ for i=1:length(dvals);
                                 %divide by two because we doubled the size of the shot map
                                 %subtract 1/2 because we smeared out the
                                 %shot map by 1/2 of an original pixel
-                                layer(i).boundaries(count)={B{b}/2-1/2+repmat([xstart,ystart],[size(B{b},1),1])}; 
+                                %Subtract 1/2 again because of the way we
+                                %doubled the size of the matrixur
+                                layer(i).boundaries(count)={B{b}/2-1/2-1/2+repmat([xstart,ystart],[size(B{b},1),1])}; 
                                 count=count+1;
                             end
                         end
