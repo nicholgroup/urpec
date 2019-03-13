@@ -69,19 +69,21 @@ if ~exist('config','var')
     config=struct();
 end
 
-config = def(config,'platform','NPGS');
-config = def(config,'template','C:\Users\Nichol\Box Sync\Nichol Group\Matlab\urpec\example stuff\job_NPGS_NG_StandardWrite_Template.RF6');
-
+if ~isfield(config,'template')
+    display('Please select a template file...');
+    [config.template temppath] = uigetfile('C:\NPGS\Projects\RunFilesFromMATLAB\Templates\*.RF6');
+    fulltempfile = fullfile(temppath, config.template);
+end
 
 temp_ind = regexp(config.template,'\');
 if ~isempty(temp_ind)
     templateID = config.template(max(temp_ind)+1:end-4);
 else
-    templateID = config.template;
+    templateID = config.template(1:end-4);
 end
 
 switch templateID
-    case 'job_NPGS_NG_StandardWrite_Template'
+    case 'NG_StandardWrite'%'job_NPGS_NG_StandardWrite_Template'
         display(['Creating job using ' templateID]);
         
         % default values for this template (based on Si devices on 3/12/19)
@@ -98,68 +100,48 @@ switch templateID
         config = def(config,'write_mag_sm','1500');
         config = def(config,'write_mag_lg','600');
         
-        % if did not pass array to urpec_writeJob... choose arrays for doses
+        % select dose files for sm/med/lg
         display('Please choose layer doses for small features...');
-        [baseName, folder] = uigetfile('*.txt');
+        [baseName, folder] = uigetfile('C:\NPGS\Projects\*.txt');
         file_sm_doses = fullfile(folder, baseName);
         sm_doses_tab = readtable(file_sm_doses);
         sm_doses = sm_doses_tab(:,1);
         sm_doses = table2array(sm_doses);
         
         display('Please choose layer doses for med features...');
-        [baseName, folder] = uigetfile('*.txt');
+        [baseName, folder] = uigetfile([folder '\*.txt']);
         file_med_doses = fullfile(folder, baseName);
         med_doses_tab = readtable(file_med_doses);
         med_doses = med_doses_tab(:,1);
         med_doses = table2array(med_doses);
         
         display('Please choose layer doses for lg features...');
-        [baseName, folder] = uigetfile('*.txt');
+        [baseName, folder] = uigetfile([folder '\*.txt']);
         file_lg_doses = fullfile(folder, baseName);
         lg_doses_tab = readtable(file_lg_doses);
         lg_doses = lg_doses_tab(:,1);
         lg_doses = table2array(lg_doses);
         
-        %convert dose percentages to actual doses using config.dtc
+        % convert dose percentages to actual doses using config.dtc
         sm_doses = sm_doses*str2num(config.dtc);
         med_doses = med_doses*str2num(config.dtc);
         lg_doses = lg_doses*str2num(config.dtc);
         
-        
-        if ~isfield(config,'template')
-            display('Please choose a job file template.');
-            config.template = uigetfile;
-        end
-        
-        % define required fields for each template
-        switch config.template
-            case 'job_NPGS_NG_StandardWrite_Template.RF6';
-                reqFields = {'dtc','init_move_x','init_move_y','final_move_x',...
-                    'final_move_y','am_apertureerture','lg_apertureerture','al_mag_sm',...
-                    'al_mag_med','al_mag_lg','mag_sm','mag_lg'...
-                    };
-                for i=1:length(reqFields)
-                    if ~isfield(config,reqFields{i})
-                        error(['This template requires field ' reqFields{i} ' in the config.']);
-                    end
-                end
-        end
-        
+        % choose .dc2 files
         display('Please choose small feature CAD file...');
-        [cad_sm,dir] = uigetfile('C:\NPGS\Projects\*.dc2');
+        [cad_sm,dir] = uigetfile([folder '\*.dc2']);
         fullCad_sm = fullfile(dir,cad_sm);
         cad_sm=cad_sm(1:end-4);
         display('Please choose med feature CAD file...');
-        [cad_med,dir] = uigetfile('C:\NPGS\Projects\*.dc2');
+        [cad_med,dir] = uigetfile([folder '\*.dc2']);
         fullCad_med = fullfile(dir,cad_med);
         cad_med=cad_med(1:end-4);
         display('Please choose lg feature CAD file...');
-        [cad_lg,dir] = uigetfile('C:\NPGS\Projects\*.dc2');
+        [cad_lg,dir] = uigetfile([folder '\*.dc2']);
         fullCad_lg = fullfile(dir,cad_lg);
         cad_lg=cad_lg(1:end-4);
         
         %find layers in use
-        
         cad_sm_t = fileread(fullCad_sm);
         cad_med_t = fileread(fullCad_med);
         cad_lg_t = fileread(fullCad_lg);
@@ -181,7 +163,6 @@ switch templateID
                 slayers{length(slayers)+1} = slstr(ind_list(end)+2:end-1);
             end
         end
-        
         
         mcad = strrep(cad_med_t,' ',''); % remove spaces
         ind = regexp(mcad,'DoNotUse'); %find index... layers are right after
@@ -223,15 +204,6 @@ switch templateID
         mlayers;
         llayers;
         
-        
-        %aperture list for URNano Zeiss Supra SEM:
-        % 1 - 30um
-        % 2 - 7.5um
-        % 3 - 10um
-        % 4 - 40um
-        % 5 - 60um
-        % 6 - 120um
-        
         switch config.sm_aperture
             case 30
                 sm_aperture_current = '445.0';
@@ -258,6 +230,7 @@ switch templateID
                 sm_aperture = '6';
                 
         end
+        
         switch config.lg_aperture
             case 30
                 lg_aperture_current = '445.0';
@@ -285,13 +258,9 @@ switch templateID
         Path2 = [dir, RunFile_Name];
         
         %This ensures we always have an unedited file that can take inputs
-        template = config.template;
-        tempNameInd = max(regexp(config.template,'\'))+1;
-        tempName = config.template(tempNameInd:end);
-        %'C:\Users\Nichol\Box Sync\Nichol Group\Matlab\dxf2run\RunTemplate_6Entity.RF6';
-        savdir = 'C:\NPGS\Projects\RunFilesFromMATLAB';
-        copyfile(template,savdir);
-        movefile(['C:\NPGS\Projects\RunFilesFromMATLAB\' tempName], Path1);
+        savdir = 'C:\NPGS\Projects\RunFilesFromMATLAB\TemplateArchive';
+        copyfile(fulltempfile,savdir);
+        copyfile(['C:\NPGS\Projects\RunFilesFromMATLAB\Templates\' templateID '.RF6'], Path1);
         
         %read template and replace proper fields
         f = fileread(Path1);
@@ -307,39 +276,122 @@ switch templateID
         f = strrep(f,'al_mag_med',config.al_mag_med);
         f = strrep(f,'al_mag_lg',config.al_mag_lg);
         f = strrep(f,'write_mag_lg',config.write_mag_lg);
-        f = strrep(f,'write_mag_sm',config.write_mag_lg);
+        f = strrep(f,'write_mag_sm',config.write_mag_sm);
         f = strrep(f,'init_move_x',config.init_move_x);
         f = strrep(f,'init_move_y',config.init_move_y);
         f = strrep(f,'final_move_x',config.final_move_x);
         f = strrep(f,'final_move_y',config.final_move_y);
-        for i = 1:length(sm_doses)
-            if any(strcmp(slayers,num2str(i)));
-                f = strrep(f,['wo' num2str(i) 's'],'w'); %write option if CAD file layer has object in it: w = Normal writing, s = skip
-            else
-                f = strrep(f,['wo' num2str(i) 's'],'s');
-            end
-            dosestr_sm = ['dose_L' num2str(i) '_sm'];
-            f = strrep(f,dosestr_sm, num2str(sm_doses(i)));
+        
+        %colortab from urpec
+        ctab={[1 0 0] [0 1 0] [0 0 1] [1 1 0] [1 0 1] [0 1 1] [1 0 0] [0 1 0] [0 0 1] [1 1 0] [1 0 1] [0 1 1] [1 0 0] [0 1 0] [0 0 1] [1 1 0] [1 0 1] [0 1 1]  };
+        colorstrings = {};
+        for i=1:length(ctab)
+            ctabmat = 255.*ctab{i};
+            colorstrings{i} = {[num2str(ctabmat(1)) ' ' num2str(ctabmat(2)) ' ' num2str(ctabmat(3))]};
+            colorstrings{i} = strrep(colorstrings{i},'0','000');
         end
-        for i = 1:length(med_doses)
-            if any(strcmp(mlayers,num2str(i)));
-                f = strrep(f,['wo' num2str(i) 'm'],'w');
+       
+        % generate pattern writing text
+        %small
+        slogic={}; % logical cell array if layer name exists
+        for i=1:length(sm_doses)
+            if any(strcmp(slayers,num2str(i)))
+                a = 1;
             else
-                f = strrep(f,['wo' num2str(i) 'm'],'s');
+                a = 0;
             end
-            dosestr_med = ['dose_L' num2str(i) '_med'];
-            f = strrep(f,dosestr_med, num2str(med_doses(i)));
+            slogic{i} = a;
         end
-        for i = 1:length(lg_doses)
-            if any(strcmp(llayers,num2str(i)));
-                f = strrep(f,['wo' num2str(i) 'l'],'w');
-            else
-                f = strrep(f,['wo' num2str(i) 'l'],'s');
+        sdose = [];
+        scol = {};
+        for i=1:length(slogic)
+            if slogic{i}
+                sdose(end+1) = sm_doses(i);
+                scol{end+1} = colorstrings{i};
             end
-            dosestr_lg = ['dose_L' num2str(i) '_lg'];
-            f = strrep(f,dosestr_lg, num2str(lg_doses(i)));
+        end
+        tot_str_s = '';
+        nextnum = 2; %layer numbering starts at 2 and goes up with patterns created with urpec
+        for i=1:length(slayers)
+            strline1 = ['lev_' slayers{i} ' ' num2str(nextnum) ' w    0,0    29106    ' config.write_mag_sm '    42.2974    42.2974    ' sm_aperture '     ' sm_aperture_current];
+            strline2 = ['col -001 ' char(scol{i}) ' 10.5239 ' num2str(sdose(i)) ' 0'];
+            nextnum = nextnum + 1;
+            if i==1
+                tot_str_s = strline1;
+            else
+                tot_str_s = [tot_str_s newline strline1];
+            end
+            tot_str_s = [tot_str_s newline strline2];
         end
         
+        %med
+        mlogic={}; % logical cell array if layer name exists
+        for i=1:length(med_doses)
+            if any(strcmp(mlayers,num2str(i)))
+                a = 1;
+            else
+                a = 0;
+            end
+            mlogic{i} = a;
+        end
+        mdose = [];
+        mcol = {};
+        for i=1:length(mlogic)
+            if mlogic{i}
+                mdose(end+1) = med_doses(i);
+                mcol{end+1} = colorstrings{i};
+            end
+        end
+        tot_str_m = '';
+        nextnum = 2; %layer numbering starts at 2 and goes up with patterns created with urpec
+        for i=1:length(slayers)
+            strline1 = ['lev_' mlayers{i} ' ' num2str(nextnum) ' w    0,0    29106    ' config.write_mag_sm '    42.2974    42.2974    ' sm_aperture '     ' sm_aperture_current];
+            strline2 = ['col -001 ' char(mcol{i}) ' 10.5239 ' num2str(mdose(i)) ' 0'];
+            nextnum = nextnum + 1;
+            if i==1
+                tot_str_m = strline1;
+            else
+                tot_str_m = [tot_str_m newline strline1];
+            end
+            tot_str_m = [tot_str_m newline strline2];
+        end
+        
+        %lg
+        llogic={}; % logical cell array if layer name exists
+        for i=1:length(lg_doses)
+            if any(strcmp(llayers,num2str(i)))
+                a = 1;
+            else
+                a = 0;
+            end
+            llogic{i} = a;
+        end
+        ldose = [];
+        lcol ={};
+        for i=1:length(llogic)
+            if llogic{i}
+                ldose(end+1) = lg_doses(i);
+                lcol{end+1} = colorstrings{i};
+            end
+        end
+        tot_str_l = '';
+        nextnum = 2; %layer numbering starts at 2 and goes up with patterns created with urpec
+        for i=1:length(llayers)
+            strline1 = ['lev_' llayers{i} ' ' num2str(nextnum) ' w    0,0    29106    ' config.write_mag_lg '    42.2974    42.2974    ' lg_aperture '     ' lg_aperture_current];
+            strline2 = ['col -001 ' char(lcol{i}) ' 10.5239 ' num2str(ldose(i)) ' 0'];
+            nextnum = nextnum + 1;
+            if i==1
+                tot_str_l = strline1;
+            else
+                tot_str_l = [tot_str_l newline strline1];
+            end
+            tot_str_l = [tot_str_l newline strline2];
+        end
+        
+        %replace text
+        f = strrep(f,'smallwriting',tot_str_s);
+        f = strrep(f,'mediumwriting',tot_str_m);
+        f = strrep(f,'largewriting',tot_str_l);
         
         fid = fopen(Path1,'w');
         fprintf(fid,f);
@@ -348,13 +400,7 @@ switch templateID
         copyfile(Path1, Path2);
         
         display(['Run file ' RunFile_Name ' created in ' Path2 ' with a backup created in ' Path1])
-        
-    case 'job_NPGS_NG_1PatternDT_Template'
-        display(['oops... this template has not been created yet. You should make it now (or bug Elliot until he does)!']);
-    case 'job_NPGS_NG_2PatternDT_Template'
-        display(['oops... this template has not been created yet. You should make it now (or bug Elliot until he does)!']);
 end
-
 
 end
 
@@ -364,3 +410,23 @@ if(~isfield(s,f))
     s=setfield(s,f,v);
 end
 end
+
+% % testing
+% config= struct;
+% config.dtc = '400'
+% config.write_mag_sm = '1500';
+% config.sm_aperture = 7.5;
+%config.sm_aperture_current = '17';
+% config.write_mag_sm = '1500';
+% cofig.write_mag_lg = '600';
+% config.al_mag_sm = '1500';
+% config.al_mag_med = '800';
+% config.al_mag_lg = '235';
+% config.lg_aperture = 30;
+% config.lg_aperture_current = '445';
+% config.init_move_x = '105';
+% config.init_move_y = '-12';
+% config.final_move_x = '-747';
+% config.final_move_y = '-123';
+
+
