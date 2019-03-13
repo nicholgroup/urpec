@@ -26,6 +26,12 @@ function [  ] = urpec( config )
 %   windowVal: smoothing distance for the dose modulation. Units are
 %   approximately the grid spacing. Default is 10.
 %
+%   targetPoints: approximate number of points for the simulation. Default
+%   is 50e6.
+%
+%   autoRes: enables auto adjustment of the resolution for ~10min
+%   computation time
+%
 % call this function without any arguments, or via
 % urpec(struct('dx',0.005, 'subfieldSize',20,'maxIter',6,'dvals',[1:.2:2.4]))
 % for example
@@ -36,9 +42,6 @@ function [  ] = urpec( config )
 % Elliot Connors econnors@ur.rochester.edu
 % John Nichol jnich10@ur.rochester.edu
 %
-% TODO:
-% Add code to make the run file?
-% Add support for different pattern file formats?
 
 tic
 
@@ -50,12 +53,13 @@ if ~exist('config','var')
     config=struct();
 end
 
-config = def(config,'dx',.01);   %Grid spacing in microns
+config = def(config,'dx',.01);   %Grid spacing in microns. This is now affected by config.targetPoints.
+config = def(config,'targetPoints',50e6);  %Target number of points for the simulation. 50e6 takes about 10 min to complete.
+config = def(config,'autoRes',true);  %auto adjust the resolution
 config = def(config,'subfieldSize',50);  %subfield size in microns
 config = def(config,'maxIter',6);  %max number of iterations for the deconvolution
 config = def(config,'dvals',[1:.1:1.9]);  %doses corresponding to output layers, in units of dose to clear
 config = def(config,'windowVal',10);  %Smoothing factor for the dose modultion. Default is 10. Units are approximately the grid spacing.
-
 
 dx = config.dx;
 subfieldSize=config.subfieldSize;
@@ -107,45 +111,45 @@ end
 % out.smallobj = cell(1, object_num);
 % out.justmedobj = cell(1, object_num);
 
-lg_med_threshold = 1e2; % if object area > lg_med_threshold then = lg object
-med_sm_threshold = 2; % if med_sm_threshold < object area < lg_med_threshold then = med object
-% if object < med_sm_threshold then = small object
+% lg_med_threshold = 1e2; % if object area > lg_med_threshold then = lg object
+% med_sm_threshold = 2; % if med_sm_threshold < object area < lg_med_threshold then = med object
+% % if object < med_sm_threshold then = small object
 
 %currently medium also includes small for code testing
-
-for ar = 1:object_num
-    if areas{ar} > lg_med_threshold
-        out.largeobj{ar} = objects{ar};
-    else
-        out.medobj{ar} = objects{ar};
-        %medium objects also include small
-        if areas{ar} < med_sm_threshold
-            out.smallobj{ar} = objects{ar};
-        else
-            out.justmed{ar} = objects{ar};
-        end
-    end
-end
+% 
+% for ar = 1:object_num
+%     if areas{ar} > lg_med_threshold
+%         out.largeobj{ar} = objects{ar};
+%     else
+%         out.medobj{ar} = objects{ar};
+%         %medium objects also include small
+%         if areas{ar} < med_sm_threshold
+%             out.smallobj{ar} = objects{ar};
+%         else
+%             out.justmed{ar} = objects{ar};
+%         end
+%     end
+% end
 
 display(['dxf CAD file analyzed.']);
 
 % EJC: edit to treat large features as medium if nothing below lg/med
 % threshold
-if isfield(out,'medobj')
-    medall = vertcat(out.medobj{1}, out.medobj{2});
-    for i = 3:object_num
-        medall = vertcat(medall, out.medobj{i});
-    end
-else
-    try
-        out.medobj=out.largeobj;
-        out.largeobj='to med obj';
-        medall = vertcat(out.medobj{1}, out.medobj{2});
-        for i=3:object_num
-            medall = vertcat(medall, out.medobj{i});
-        end
-    end
-end
+% if isfield(out,'medobj')
+%     medall = vertcat(out.medobj{1}, out.medobj{2});
+%     for i = 3:object_num
+%         medall = vertcat(medall, out.medobj{i});
+%     end
+% else
+%     try
+%         out.medobj=out.largeobj;
+%         out.largeobj='to med obj';
+%         medall = vertcat(out.medobj{1}, out.medobj{2});
+%         for i=3:object_num
+%             medall = vertcat(medall, out.medobj{i});
+%         end
+%     end
+% end
 
 medall=vertcat(objects{1},objects{2});
 for i = 3:object_num
@@ -162,30 +166,50 @@ y = minY:dx:maxY;
 [X,Y] = meshgrid(x, y);
 [m,n] = size(X);
 
-%TODO: add something to change dx if the arrays are too large or too small.
-%Arrays of 5000x5000 points seem to take a reasonable amount of time.
 
-if isfield(out,'smallobj')
-    sm_all = vertcat(out.smallobj{1}, out.smallobj{2});
-    for i = 3:object_num
-        sm_all = vertcat(sm_all, out.smallobj{i});
-    end
-end
+% if isfield(out,'smallobj')
+%     sm_all = vertcat(out.smallobj{1}, out.smallobj{2});
+%     for i = 3:object_num
+%         sm_all = vertcat(sm_all, out.smallobj{i});
+%     end
+% end
 
-fprintf(['Creating 2D binary grid spanning medium feature write field (spacing = ', num2str(dx), '). This can take a few minutes...']);
+fprintf(['Creating 2D binary grid spanning medium feature write field (spacing = ', num2str(dx), '). This can take a few minutes...\n']);
 %polygon distribution - creating binary grid of x,y points that are 1 if
 %in a polygon or 0 if not
 
-%Make the simulation area bigger to account for proximity effects
+%Make the simulation area bigger by 5 microns to account for proximity effects
+maxXold=maxX;
+minXold=minX;
+maxYold=maxY;
+minYold=minY;
 padSize=ceil(5/dx).*dx;
 padPoints=padSize/dx;
-maxX=maxX+padSize;
-minX=minX-padSize;
-maxY=maxY+padSize;
-minY=minY-padSize;
+maxX=maxXold+padSize;
+minX=minXold-padSize;
+maxY=maxYold+padSize;
+minY=minYold-padSize;
 
 xp = minX:dx:maxX;
 yp = minY:dx:maxY;
+
+totPoints=length(xp)*length(yp);
+fprintf('There are %2.0e points. \n',totPoints);
+%Make sure the grid size is appropriate
+if config.autoRes && (totPoints<.8*config.targetPoints || totPoints>1.2*config.targetPoints)
+    expand=ceil(log2(sqrt(totPoints/config.targetPoints)));
+    dx=dx*2^(expand);
+    fprintf('Resetting the resolution to %3.4f.\n',dx);
+    padSize=ceil(5/dx).*dx;
+    padPoints=padSize/dx;
+    maxX=maxXold+padSize;
+    minX=minXold-padSize;
+    maxY=maxYold+padSize;
+    minY=minYold-padSize;
+    xp = minX:dx:maxX;
+    yp = minY:dx:maxY;
+    fprintf('There are now %2.0e points.\n',length(xp)*length(yp));
+end
 
 %make sure the number of points is odd. This is important for deconvolving the psf
 if ~mod(length(xp),2)
@@ -211,8 +235,8 @@ polysbin = zeros(size(XP));
 % else
 %     out.newmedobj = out.medobj(~cellfun('isempty', out.medobj));
 % end
-out.newmedobj=out.medobj(~cellfun('isempty',out.medobj));
-[mm, nm] = size(out.newmedobj);
+% out.newmedobj=out.medobj(~cellfun('isempty',out.medobj));
+% [mm, nm] = size(out.newmedobj);
 
 for ar = 1:length(objects) %EJC 5/5/2018: run time (should) scale ~linearly~ with med/sm object num
     p = objects{ar};
@@ -222,19 +246,19 @@ for ar = 1:length(objects) %EJC 5/5/2018: run time (should) scale ~linearly~ wit
     polysbin=polysbin+subpoly;
 end
 
-med_field_width_x = maxX-minX;
-med_field_width_y = maxY-minY;
-
-sm_field_width_x = 3;%micron
-sm_field_width_y = sm_field_width_x;
-sm_field_x_ind = round(sm_field_width_x/dx);
-sm_field_y_ind = round(sm_field_width_y/dx);
+% med_field_width_x = maxX-minX;
+% med_field_width_y = maxY-minY;
+% 
+% sm_field_width_x = 3;%micron
+% sm_field_width_y = sm_field_width_x;
+% sm_field_x_ind = round(sm_field_width_x/dx);
+% sm_field_y_ind = round(sm_field_width_y/dx);
 
 [xpts ypts] = size(polysbin);
-sm_x_min = round((ypts/2)-sm_field_x_ind);
-sm_x_max = round((ypts/2)+sm_field_x_ind);
-sm_y_min = round((xpts/2)-sm_field_y_ind);
-sm_y_max = round((xpts/2)+sm_field_y_ind);
+% sm_x_min = round((ypts/2)-sm_field_x_ind);
+% sm_x_max = round((ypts/2)+sm_field_x_ind);
+% sm_y_min = round((xpts/2)-sm_field_y_ind);
+% sm_y_max = round((xpts/2)+sm_field_y_ind);
 
 fprintf('done analyzing file.\n')
 
@@ -257,8 +281,6 @@ xpsf=xpsf.*dx;
 ypsf=ypsf.*dx;
 rpsf2=xpsf.^2+ypsf.^2;
 psf=1/(1+eta).*(1/(pi*alpha^2).*exp(-rpsf2./alpha.^2)+eta/(pi*beta^2).*exp(-rpsf2./beta.^2));
-
-
 
 %Zero pad to at least 10um x 10 um;
 %pad in the x direction
@@ -331,7 +353,7 @@ fprintf('done.\n')
 
 fprintf('Fracturing...\n')
 
-%I forget why this is needed?
+%This is needed to not count the dose of places that get zero or NaN dose.
 doseNew(doseNew==0)=NaN;
 doseNew(doseNew<0)=NaN;
 
@@ -386,7 +408,7 @@ for i=1:length(dvals);
     xsubfields=ceil(mp/subfieldSize);
     ysubfields=ceil(np/subfieldSize);
     decrease_sub = 1;
-    while (n <= ysubfields)    %change to x subfields for horizontal writing
+    while (n <= ysubfields)    %change to xsubfields for horizontal writing
         %decrease_sub=1;
         m = 1;
         %decrease_sub = 1;
@@ -404,8 +426,8 @@ for i=1:length(dvals);
                 disp = 1;
             end
             proceed = 0;
-            %for n=1:1:ysubfields %m=1:1:xsubfields
-            %for m=1:1:xsubfields %n=1:1:ysubfields
+
+            
             subfield=zeros(mp,np);
             %display(['Trying subfield size: ' num2str(mp/decrease_sub) 'x' num2str(np/decrease_sub)]);
             if (m-1)*subfieldSize+1<min(m*subfieldSize,mp)
@@ -428,6 +450,18 @@ for i=1:length(dvals);
             yinds=reshape([yinds;yinds],[1 2*length(yinds)]);
             
             subdata=layer(i).shotMap(xinds,yinds);
+            
+            %Now "smear" out the shot map by one pixel (which is really
+            %half of an original pixel) in each direction. This makes sure that
+            %subfield boundaries touch each other.     
+            sdll=padarray(subdata,[1,1],0,'pre');
+            sdur=padarray(subdata,[1,1],0,'post');
+            sdul=padarray(padarray(subdata,[1,0],'pre'),[0,1],'post');
+            sdlr=padarray(padarray(subdata,[1,0],'post'),[0,1],'pre');
+            
+            sd=sdll+sdur+sdul+sdlr;
+            sd(sd>0)=1;
+            subdata=sd;     
             
             if (sum(subdata(:)))>0
                 
@@ -478,9 +512,9 @@ for i=1:length(dvals);
                             %check for large polygons
                             if size(B{b},1)>200%200
                                 fprintf('Large boundaries in layer %d. Halving subfield size and retrying... \n',i);
-                                %TODO:if large boundaries, i=i-1,
-                                %subfieldSize=subfieldSize/2; and then don't
-                                %execute the next lines.
+                                   
+                                %If large boundaries, make the subfields
+                                %smaller and restart;
                                 decrease = 1;
                                 decrease_sub = decrease_sub + 1;
                                 proceed = 0;
@@ -496,7 +530,10 @@ for i=1:length(dvals);
                             end
                             
                             if proceed
-                                layer(i).boundaries(count)={B{b}/2+repmat([xstart,ystart],[size(B{b},1),1])}; %divide by two because we doubled the size of the shot map
+                                %divide by two because we doubled the size of the shot map
+                                %subtract 1/2 because we smeared out the
+                                %shot map by 1/2 of an original pixel
+                                layer(i).boundaries(count)={B{b}/2-1/2+repmat([xstart,ystart],[size(B{b},1),1])}; 
                                 count=count+1;
                             end
                         end
