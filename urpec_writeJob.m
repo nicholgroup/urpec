@@ -182,6 +182,8 @@ switch templateID
             end
         end
         
+        %test
+        
         mcad = strrep(cad_med_t,' ',''); % remove spaces
         ind = regexp(mcad,'DoNotUse'); %find index... layers are right after
         mcad = mcad(ind:ind+1000); %shorten
