@@ -5,7 +5,7 @@ urpec generates a proximity-effect-corrected .dxf file for electron beam lithogr
 
 Right now this is intended for use with NPGS.
 
-To run urpec, set your matlab path to Nichol Group\matlab\urpec and run urpec, optionally with arguments. See the documentation inside urpec for calling urpec with arguments. 
+To run urpec, download all files to a folder. Set you matlab path to this folder and run urpec, optionally with arguments. See the documentation inside urpec for calling urpec with arguments. 
 
 Current PSFs available are 
 - GaAs, 30 kV, 200nm PMMA
@@ -30,12 +30,8 @@ https://www.mathworks.com/matlabcentral/fileexchange/28791-dxf2coord-2-0
 
 fitwrap is (c) Hendrik Bluhm
 
-TODO:
-1. Add the capability to generate an NPGS run file.
-2. Add support for other file formats, like GDSII.
-3. Make sure all layers are populated, even if they have nothing in them. Will this work with npgs?
-4. The layer boundaries don't touch. The are separated by half the pixel size. Not a huge deal, but it would be nice to fix.
-5. Be smart about the grid size
+urpec is written by Adina Ripin, Elliot Connors, and John Nichol.
+
 
 
 
