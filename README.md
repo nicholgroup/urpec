@@ -24,7 +24,7 @@ dxflib is (c) Grzegorz Kwiatek.
 It is distributed here for the sake of completeness. It can be found here:
 https://www.mathworks.com/matlabcentral/fileexchange/33884-dxflib
 
-dxf2coord_20 is written by Lukas Wischounig. 
+dxf2coord_20 is based on a script of the same name written by Lukas Wischounig. 
 It is distributed here for completeness. It can be found here:   
 https://www.mathworks.com/matlabcentral/fileexchange/28791-dxf2coord-2-0
 

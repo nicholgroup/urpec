@@ -1,4 +1,4 @@
-
+function [lwpolylines] =dxf2coord_20(pathname,filename);
 % dxf2coord 2.0 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                                                    
 % freeware                                                                %
 % author: lukas wischounig                                                %
@@ -81,14 +81,16 @@
 % Rochester 2019_03_07
 
 %%%%%%begin%%%%%%%%  get file
-dir='C:\Users\Nichol\Box Sync\Nichol Group\Fab\*.dxf';
+% dir='C:\Users\Nichol\Box Sync\Nichol Group\Fab\*.dxf';
+% 
+% [filename, pathname] = uigetfile(dir,'Multiselect','off'); % choose file to open
+%     if filename==0
+%         errordlg('no file selected','file error');return
+%     end
+%     
 
-[filename, pathname] = uigetfile(dir,'Multiselect','off'); % choose file to open
-    if filename==0
-        errordlg('no file selected','file error');return
-    end
-    
 addpath(pathname); % add path to the matlab search path
+
 fid=fopen(filename); % open file
 dxfdata=textscan(fid,'%s'); % read dxf file as cell array of strings dxfdata
 fclose(fid); % close file to accelerate further computation
@@ -399,5 +401,7 @@ end
 %%%%%%end%%%%%%  get dxf data
 
 clear a b total fid dxfdata % delete garbage
+
+end
 
 

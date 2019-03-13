@@ -58,22 +58,29 @@ config = def(config,'targetPoints',50e6);  %Target number of points for the simu
 config = def(config,'autoRes',true);  %auto adjust the resolution
 config = def(config,'subfieldSize',50);  %subfield size in microns
 config = def(config,'maxIter',6);  %max number of iterations for the deconvolution
-config = def(config,'dvals',[1:.1:1.9]);  %doses corresponding to output layers, in units of dose to clear
+config = def(config,'dvals',[1:.1:2.4]);  %doses corresponding to output layers, in units of dose to clear
 config = def(config,'windowVal',10);  %Smoothing factor for the dose modultion. Default is 10. Units are approximately the grid spacing.
+config=def(config,'file',[]); 
+config=def(config,'psfFile',[]);
 
 dx = config.dx;
 subfieldSize=config.subfieldSize;
 
 fprintf('urpec is running...\n');
 
-%choose and load file
-fprintf('Select your dxf file.\n')
 
-dxf2coord_20;
+if isempty(config.file)
+    %choose and load file
+    fprintf('Select your dxf file.\n')
+    [filename pathname]=uigetfile('*.dxf');
+else
+    [pathname,filename,ext] = fileparts(config.file);
+    filename=[filename ext];
+end
+
+lwpolylines=dxf2coord_20(pathname,filename);
 
 fprintf('dxf CAD file imported.\n')
-
-out = struct;
 
 %splitting each set of points into its own object
 object_num=max(lwpolylines(:,1)); % number of polygons in CAD file
@@ -103,53 +110,7 @@ for ar = 1:object_num
     areas{ar} = polyarea(curr_obj(:,2), curr_obj(:,3));
 end
 
-%this part was coded under the assumption that there would be three main
-%size groups of objects
-
-% out.largeobj = cell(1, object_num);
-% out.medobj = cell(1, object_num);
-% out.smallobj = cell(1, object_num);
-% out.justmedobj = cell(1, object_num);
-
-% lg_med_threshold = 1e2; % if object area > lg_med_threshold then = lg object
-% med_sm_threshold = 2; % if med_sm_threshold < object area < lg_med_threshold then = med object
-% % if object < med_sm_threshold then = small object
-
-%currently medium also includes small for code testing
-% 
-% for ar = 1:object_num
-%     if areas{ar} > lg_med_threshold
-%         out.largeobj{ar} = objects{ar};
-%     else
-%         out.medobj{ar} = objects{ar};
-%         %medium objects also include small
-%         if areas{ar} < med_sm_threshold
-%             out.smallobj{ar} = objects{ar};
-%         else
-%             out.justmed{ar} = objects{ar};
-%         end
-%     end
-% end
-
 display(['dxf CAD file analyzed.']);
-
-% EJC: edit to treat large features as medium if nothing below lg/med
-% threshold
-% if isfield(out,'medobj')
-%     medall = vertcat(out.medobj{1}, out.medobj{2});
-%     for i = 3:object_num
-%         medall = vertcat(medall, out.medobj{i});
-%     end
-% else
-%     try
-%         out.medobj=out.largeobj;
-%         out.largeobj='to med obj';
-%         medall = vertcat(out.medobj{1}, out.medobj{2});
-%         for i=3:object_num
-%             medall = vertcat(medall, out.medobj{i});
-%         end
-%     end
-% end
 
 medall=vertcat(objects{1},objects{2});
 for i = 3:object_num
@@ -166,13 +127,6 @@ y = minY:dx:maxY;
 [X,Y] = meshgrid(x, y);
 [m,n] = size(X);
 
-
-% if isfield(out,'smallobj')
-%     sm_all = vertcat(out.smallobj{1}, out.smallobj{2});
-%     for i = 3:object_num
-%         sm_all = vertcat(sm_all, out.smallobj{i});
-%     end
-% end
 
 fprintf(['Creating 2D binary grid spanning medium feature write field (spacing = ', num2str(dx), '). This can take a few minutes...\n']);
 %polygon distribution - creating binary grid of x,y points that are 1 if
@@ -228,15 +182,6 @@ yp = minY:dx:maxY;
 totgridpts = length(xp)*length(yp);
 polysbin = zeros(size(XP));
 
-% if ~isfield(out, 'medobj')
-%     try
-%         out.newmedobj = out.largeobj(~cellfun('isempty',out.largeobj));
-%     end
-% else
-%     out.newmedobj = out.medobj(~cellfun('isempty', out.medobj));
-% end
-% out.newmedobj=out.medobj(~cellfun('isempty',out.medobj));
-% [mm, nm] = size(out.newmedobj);
 
 for ar = 1:length(objects) %EJC 5/5/2018: run time (should) scale ~linearly~ with med/sm object num
     p = objects{ar};
@@ -246,24 +191,16 @@ for ar = 1:length(objects) %EJC 5/5/2018: run time (should) scale ~linearly~ wit
     polysbin=polysbin+subpoly;
 end
 
-% med_field_width_x = maxX-minX;
-% med_field_width_y = maxY-minY;
-% 
-% sm_field_width_x = 3;%micron
-% sm_field_width_y = sm_field_width_x;
-% sm_field_x_ind = round(sm_field_width_x/dx);
-% sm_field_y_ind = round(sm_field_width_y/dx);
-
 [xpts ypts] = size(polysbin);
-% sm_x_min = round((ypts/2)-sm_field_x_ind);
-% sm_x_max = round((ypts/2)+sm_field_x_ind);
-% sm_y_min = round((xpts/2)-sm_field_y_ind);
-% sm_y_max = round((xpts/2)+sm_field_y_ind);
 
 fprintf('done analyzing file.\n')
 
-fprintf('Select point spread function file.\n')
-load(uigetfile('*PSF*'));
+if isempty(config.psfFile)
+    fprintf('Select point spread function file.\n')
+    load(uigetfile('*PSF*'));
+else
+    load(config.psfFile);
+end
 
 fprintf('Deconvolving psf...');
 
@@ -461,7 +398,7 @@ for i=1:length(dvals);
             
             sd=sdll+sdur+sdul+sdlr;
             sd(sd>0)=1;
-            subdata=sd;     
+            subdata=sd;
             
             if (sum(subdata(:)))>0
                 
@@ -490,15 +427,22 @@ for i=1:length(dvals);
                 if ~isempty(B)
                     for b=1:length(B)
                         
-                        %Find any holes and fix them, and add them to any
-                        %enclosing boundaries
+                        %Find any holes and fix them by adding them
+                        %appropriately to enclosing boundaries
                         enclosing_boundaries=find(A(b,:));
                         for k=1:length(enclosing_boundaries)
-                            b1=B{enclosing_boundaries(k)};
-                            b2=B{b}; %enclosing boundary
-                            b1=[b1; b2; b1(end,:)];
-                            B{b}=[];
-                            B{enclosing_boundaries(k)}=b1;
+                            b1=B{enclosing_boundaries(k)};% the enclosing boundary
+                            b2=B{b}; %the hole
+                            
+                            %Only keep the hole if it has >0 area. 
+                            %Also, only keep the hole if there are no
+                            %overlapping lines in the hole. There should be only one
+                            %pair of matching vertices per polygon.
+                            if polyarea(b2(:,1),b2(:,2))>0 && (size(b2,1)-size(unique(b2,'rows'),1)==1) 
+                                b1=[b1; b2; b1(end,:)]; %go from the enclosing boundary to the hole and back to the enclosing boundary
+                            end
+                            B{b}=[]; %get rid of the hole, since it is now part of the enclosing boundary
+                            B{enclosing_boundaries(k)}=b1; %add the boundary back to B.
                         end
                     end
                     
