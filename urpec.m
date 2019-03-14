@@ -26,6 +26,16 @@ function [  ] = urpec( config )
 %   windowVal: smoothing distance for the dose modulation. Units are
 %   approximately the grid spacing. Default is 10.
 %
+%   targetPoints: approximate number of points for the simulation. Default
+%   is 50e6.
+%
+%   autoRes: enables auto adjustment of the resolution for ~10min
+%   computation time
+%
+%   File: datafile for processing
+%
+%   psfFile: point-spread function file
+%
 % call this function without any arguments, or via
 % urpec(struct('dx',0.005, 'subfieldSize',20,'maxIter',6,'dvals',[1:.2:2.4]))
 % for example
@@ -36,9 +46,6 @@ function [  ] = urpec( config )
 % Elliot Connors econnors@ur.rochester.edu
 % John Nichol jnich10@ur.rochester.edu
 %
-% TODO:
-% Add code to make the run file?
-% Add support for different pattern file formats?
 
 tic
 
@@ -50,26 +57,33 @@ if ~exist('config','var')
     config=struct();
 end
 
-config = def(config,'dx',.01);   %Grid spacing in microns
+config = def(config,'dx',.01);   %Grid spacing in microns. This is now affected by config.targetPoints.
+config = def(config,'targetPoints',50e6);  %Target number of points for the simulation. 50e6 takes about 10 min to complete.
+config = def(config,'autoRes',true);  %auto adjust the resolution
 config = def(config,'subfieldSize',50);  %subfield size in microns
 config = def(config,'maxIter',6);  %max number of iterations for the deconvolution
-config = def(config,'dvals',[1:.1:1.9]);  %doses corresponding to output layers, in units of dose to clear
+config = def(config,'dvals',[1:.1:2.4]);  %doses corresponding to output layers, in units of dose to clear
 config = def(config,'windowVal',10);  %Smoothing factor for the dose modultion. Default is 10. Units are approximately the grid spacing.
-
+config=def(config,'file',[]); 
+config=def(config,'psfFile',[]);
 
 dx = config.dx;
 subfieldSize=config.subfieldSize;
 
 fprintf('urpec is running...\n');
 
-%choose and load file
-fprintf('Select your dxf file.\n')
+if isempty(config.file)
+    %choose and load file
+    fprintf('Select your dxf file.\n')
+    [filename pathname]=uigetfile('*.dxf');
+else
+    [pathname,filename,ext] = fileparts(config.file);
+    filename=[filename ext];
+end
 
-dxf2coord_20;
+lwpolylines=dxf2coord_20(pathname,filename);
 
 fprintf('dxf CAD file imported.\n')
-
-out = struct;
 
 %splitting each set of points into its own object
 object_num=max(lwpolylines(:,1)); % number of polygons in CAD file
@@ -99,53 +113,7 @@ for ar = 1:object_num
     areas{ar} = polyarea(curr_obj(:,2), curr_obj(:,3));
 end
 
-%this part was coded under the assumption that there would be three main
-%size groups of objects
-
-% out.largeobj = cell(1, object_num);
-% out.medobj = cell(1, object_num);
-% out.smallobj = cell(1, object_num);
-% out.justmedobj = cell(1, object_num);
-
-lg_med_threshold = 1e2; % if object area > lg_med_threshold then = lg object
-med_sm_threshold = 2; % if med_sm_threshold < object area < lg_med_threshold then = med object
-% if object < med_sm_threshold then = small object
-
-%currently medium also includes small for code testing
-
-for ar = 1:object_num
-    if areas{ar} > lg_med_threshold
-        out.largeobj{ar} = objects{ar};
-    else
-        out.medobj{ar} = objects{ar};
-        %medium objects also include small
-        if areas{ar} < med_sm_threshold
-            out.smallobj{ar} = objects{ar};
-        else
-            out.justmed{ar} = objects{ar};
-        end
-    end
-end
-
 display(['dxf CAD file analyzed.']);
-
-% EJC: edit to treat large features as medium if nothing below lg/med
-% threshold
-if isfield(out,'medobj')
-    medall = vertcat(out.medobj{1}, out.medobj{2});
-    for i = 3:object_num
-        medall = vertcat(medall, out.medobj{i});
-    end
-else
-    try
-        out.medobj=out.largeobj;
-        out.largeobj='to med obj';
-        medall = vertcat(out.medobj{1}, out.medobj{2});
-        for i=3:object_num
-            medall = vertcat(medall, out.medobj{i});
-        end
-    end
-end
 
 medall=vertcat(objects{1},objects{2});
 for i = 3:object_num
@@ -162,30 +130,49 @@ y = minY:dx:maxY;
 [X,Y] = meshgrid(x, y);
 [m,n] = size(X);
 
-%TODO: add something to change dx if the arrays are too large or too small.
-%Arrays of 5000x5000 points seem to take a reasonable amount of time.
 
-if isfield(out,'smallobj')
-    sm_all = vertcat(out.smallobj{1}, out.smallobj{2});
-    for i = 3:object_num
-        sm_all = vertcat(sm_all, out.smallobj{i});
-    end
-end
-
-fprintf(['Creating 2D binary grid spanning medium feature write field (spacing = ', num2str(dx), '). This can take a few minutes...']);
+fprintf(['Creating 2D binary grid spanning medium feature write field (spacing = ', num2str(dx), '). This can take a few minutes...\n']);
 %polygon distribution - creating binary grid of x,y points that are 1 if
 %in a polygon or 0 if not
 
-%Make the simulation area bigger to account for proximity effects
+%Make the simulation area bigger by 5 microns to account for proximity effects
+maxXold=maxX;
+minXold=minX;
+maxYold=maxY;
+minYold=minY;
 padSize=ceil(5/dx).*dx;
 padPoints=padSize/dx;
-maxX=maxX+padSize;
-minX=minX-padSize;
-maxY=maxY+padSize;
-minY=minY-padSize;
+maxX=maxXold+padSize;
+minX=minXold-padSize;
+maxY=maxYold+padSize;
+minY=minYold-padSize;
+
+xpold = minXold:dx:maxXold;
+ypold = minYold:dx:maxYold;
 
 xp = minX:dx:maxX;
 yp = minY:dx:maxY;
+
+totPoints=length(xp)*length(yp);
+fprintf('There are %2.0e points. \n',totPoints);
+%Make sure the grid size is appropriate
+if config.autoRes && (totPoints<.8*config.targetPoints || totPoints>1.2*config.targetPoints)
+    expand=ceil(log2(sqrt(totPoints/config.targetPoints)));
+    dx=dx*2^(expand);
+    fprintf('Resetting the resolution to %3.4f.\n',dx);
+    padSize=ceil(5/dx).*dx;
+    padPoints=padSize/dx;
+    maxX=maxXold+padSize;
+    minX=minXold-padSize;
+    maxY=maxYold+padSize;
+    minY=minYold-padSize;
+    xp = minX:dx:maxX;
+    yp = minY:dx:maxY;
+    xpold = minXold:dx:maxXold;
+    ypold = minYold:dx:maxYold;
+    
+    fprintf('There are now %2.0e points.\n',length(xp)*length(yp));
+end
 
 %make sure the number of points is odd. This is important for deconvolving the psf
 if ~mod(length(xp),2)
@@ -199,20 +186,11 @@ end
 xp = minX:dx:maxX;
 yp = minY:dx:maxY;
 [XP, YP] = meshgrid(xp, yp);
+
 [mp, np] = size(XP);
 
 totgridpts = length(xp)*length(yp);
 polysbin = zeros(size(XP));
-
-% if ~isfield(out, 'medobj')
-%     try
-%         out.newmedobj = out.largeobj(~cellfun('isempty',out.largeobj));
-%     end
-% else
-%     out.newmedobj = out.medobj(~cellfun('isempty', out.medobj));
-% end
-out.newmedobj=out.medobj(~cellfun('isempty',out.medobj));
-[mm, nm] = size(out.newmedobj);
 
 for ar = 1:length(objects) %EJC 5/5/2018: run time (should) scale ~linearly~ with med/sm object num
     p = objects{ar};
@@ -222,24 +200,16 @@ for ar = 1:length(objects) %EJC 5/5/2018: run time (should) scale ~linearly~ wit
     polysbin=polysbin+subpoly;
 end
 
-med_field_width_x = maxX-minX;
-med_field_width_y = maxY-minY;
-
-sm_field_width_x = 3;%micron
-sm_field_width_y = sm_field_width_x;
-sm_field_x_ind = round(sm_field_width_x/dx);
-sm_field_y_ind = round(sm_field_width_y/dx);
-
 [xpts ypts] = size(polysbin);
-sm_x_min = round((ypts/2)-sm_field_x_ind);
-sm_x_max = round((ypts/2)+sm_field_x_ind);
-sm_y_min = round((xpts/2)-sm_field_y_ind);
-sm_y_max = round((xpts/2)+sm_field_y_ind);
 
 fprintf('done analyzing file.\n')
 
-fprintf('Select point spread function file.\n')
-load(uigetfile('*PSF*'));
+if isempty(config.psfFile)
+    fprintf('Select point spread function file.\n')
+    load(uigetfile('*PSF*'));
+else
+    load(config.psfFile);
+end
 
 fprintf('Deconvolving psf...');
 
@@ -257,8 +227,6 @@ xpsf=xpsf.*dx;
 ypsf=ypsf.*dx;
 rpsf2=xpsf.^2+ypsf.^2;
 psf=1/(1+eta).*(1/(pi*alpha^2).*exp(-rpsf2./alpha.^2)+eta/(pi*beta^2).*exp(-rpsf2./beta.^2));
-
-
 
 %Zero pad to at least 10um x 10 um;
 %pad in the x direction
@@ -294,10 +262,14 @@ shape=polysbin>0; %1 inside shapes and 0 everywhere else
 
 dose=dstart;
 doseNew=shape; %initial guess at dose. Just the dose to clear everywhere
+figure(555); clf; imagesc(xp,yp,polysbin);
+set(gca,'YDir','norm');
+title('CAD pattern');
+drawnow;
 
 %iterate on convolving the psf, and add the difference between actual dose and desired dose to the programmed dose
 for i=1:config.maxIter
-    %doseActual=ifft2(fft2(doseNew.*polysbin).*fft2(psf)); %convolve with the point spread function, taking into account places that are dosed twice
+    %convolve with the point spread function, 
     %doseActual=ifft2(fft2(doseNew).*fft2(psf));
     doseActual=ifft2(fft2(doseNew).*fft2(psf).*fftshift(wind)); %use window to avoid ringing
 
@@ -306,13 +278,15 @@ for i=1:config.maxIter
     
     figure(556); clf;
     subplot(1,2,2);
-    imagesc(doseActual);
+    imagesc(yp,xp,doseActual);
     title(sprintf('Actual dose. Iteration %d',i));
+    set(gca,'YDir','norm');
     
-    doseNew=doseNew+(shape-doseShape); %Deonvolution: add the difference between the desired dose and the actual dose to the shape dose.
+    doseNew=doseNew+(shape-doseShape); %Deonvolution: add the difference between the desired dose and the actual dose to doseShape, defined above
     subplot(1,2,1);
-    imagesc(doseNew);
+    imagesc(yp,xp,doseNew);
     title(sprintf('Programmed dose. Iteration %d',i));
+    set(gca,'YDir','norm');
     
     drawnow;
 end
@@ -320,20 +294,26 @@ end
 dd=doseNew;
 ss=shape;
 
-doseNew=dd(padPoints+1:end-padPoints,padPoints+1:end-padPoints);
-shape=ss(padPoints+1:end-padPoints,padPoints+1:end-padPoints);
+doseNew=dd(padPoints+1:end-padPoints-1,padPoints+1:end-padPoints-1);
+shape=ss(padPoints+1:end-padPoints-1,padPoints+1:end-padPoints-1);
 mp=size(doseNew,1);
 np=size(doseNew,2);
-minXExp=minX+padSize;
-minYExp=minY+padSize;
+
+figure(557); clf;
+imagesc(xpold,ypold,doseNew);
+set(gca,'YDir','norm');
+title('Corrected dose');
+drawnow;
 
 fprintf('done.\n')
 
 fprintf('Fracturing...\n')
 
-%I forget why this is needed?
-doseNew(doseNew==0)=NaN;
-doseNew(doseNew<0)=NaN;
+%This is needed to not count the dose of places that get zero or NaN dose.
+try
+    doseNew(doseNew==0)=NaN;
+    doseNew(doseNew<0)=NaN;
+end
 
 dvals=config.dvals;
 nlayers=length(dvals);
@@ -386,7 +366,7 @@ for i=1:length(dvals);
     xsubfields=ceil(mp/subfieldSize);
     ysubfields=ceil(np/subfieldSize);
     decrease_sub = 1;
-    while (n <= ysubfields)    %change to x subfields for horizontal writing
+    while (n <= ysubfields)    %change to xsubfields for horizontal writing
         %decrease_sub=1;
         m = 1;
         %decrease_sub = 1;
@@ -404,8 +384,8 @@ for i=1:length(dvals);
                 disp = 1;
             end
             proceed = 0;
-            %for n=1:1:ysubfields %m=1:1:xsubfields
-            %for m=1:1:xsubfields %n=1:1:ysubfields
+
+            
             subfield=zeros(mp,np);
             %display(['Trying subfield size: ' num2str(mp/decrease_sub) 'x' num2str(np/decrease_sub)]);
             if (m-1)*subfieldSize+1<min(m*subfieldSize,mp)
@@ -423,11 +403,23 @@ for i=1:length(dvals);
             ystart=yinds(1);
             
             %double the size of each shot map to avoid single pixel
-            %features.
-            xinds=reshape([xinds;xinds],[1 2*length(xinds)]);
-            yinds=reshape([yinds;yinds],[1 2*length(yinds)]);
+            %features. No longer used. It was an attemp to avoid
+            %single-pixel features.
+%             xinds=reshape([xinds;xinds],[1 2*length(xinds)]);
+%             yinds=reshape([yinds;yinds],[1 2*length(yinds)]);
             
             subdata=layer(i).shotMap(xinds,yinds);
+            
+            %Now "smear" out the shot map by one pixel in each direction. This makes sure that
+            %subfield boundaries touch each other.     
+            sdll=padarray(subdata,[1,1],0,'pre');
+            sdur=padarray(subdata,[1,1],0,'post');
+            sdul=padarray(padarray(subdata,[1,0],'pre'),[0,1],'post');
+            sdlr=padarray(padarray(subdata,[1,0],'post'),[0,1],'pre');
+            
+            sd=sdll+sdur+sdul+sdlr;
+            sd(sd>0)=1;
+            subdata=sd;
             
             if (sum(subdata(:)))>0
                 
@@ -456,21 +448,28 @@ for i=1:length(dvals);
                 if ~isempty(B)
                     for b=1:length(B)
                         
-                        %Find any holes and fix them, and add them to any
-                        %enclosing boundaries
+                        %Find any holes and fix them by adding them
+                        %appropriately to enclosing boundaries
                         enclosing_boundaries=find(A(b,:));
                         for k=1:length(enclosing_boundaries)
-                            b1=B{enclosing_boundaries(k)};
-                            b2=B{b}; %enclosing boundary
-                            b1=[b1; b2; b1(end,:)];
-                            B{b}=[];
-                            B{enclosing_boundaries(k)}=b1;
+                            b1=B{enclosing_boundaries(k)};% the enclosing boundary
+                            b2=B{b}; %the hole
+                            
+                            %Only keep the hole if it has >0 area. 
+                            %Also, only keep the hole if there are no
+                            %overlapping lines in the hole. There should be only one
+                            %pair of matching vertices per polygon.
+                            if polyarea(b2(:,1),b2(:,2))>0 && (size(b2,1)-size(unique(b2,'rows'),1)==1) 
+                                b1=[b1; b2; b1(end,:)]; %go from the enclosing boundary to the hole and back to the enclosing boundary
+                            end
+                            B{b}=[]; %get rid of the hole, since it is now part of the enclosing boundary
+                            B{enclosing_boundaries(k)}=b1; %add the boundary back to B.
                         end
                     end
                     
                     %Add boundaries to layer
                     for b=1:length(B)
-                        if ~isempty(B{b})
+                        if ~isempty(B{b}) && polyarea(B{b}(:,1),B{b}(:,2))>0
                             
                             %remove unnecessary vertices
                             B{b}=simplify_polygon(B{b});
@@ -478,9 +477,9 @@ for i=1:length(dvals);
                             %check for large polygons
                             if size(B{b},1)>200%200
                                 fprintf('Large boundaries in layer %d. Halving subfield size and retrying... \n',i);
-                                %TODO:if large boundaries, i=i-1,
-                                %subfieldSize=subfieldSize/2; and then don't
-                                %execute the next lines.
+                                   
+                                %If large boundaries, make the subfields
+                                %smaller and restart;
                                 decrease = 1;
                                 decrease_sub = decrease_sub + 1;
                                 proceed = 0;
@@ -496,13 +495,24 @@ for i=1:length(dvals);
                             end
                             
                             if proceed
-                                layer(i).boundaries(count)={B{b}/2+repmat([xstart,ystart],[size(B{b},1),1])}; %divide by two because we doubled the size of the shot map
+                                %divide by two because we doubled the size of the shot map
+                                %subtract 1/2 because we smeared out the
+                                %shot map by 1/2 of an original pixel
+                                %Subtract 1/2 again because of the way we
+                                %doubled the size of the matrix.
+                                %layer(i).boundaries(count)={B{b}/2-1/2-1/2+repmat([xstart,ystart],[size(B{b},1),1])}; 
+                                
+                                %For use with undoubled matrices. Subtract
+                                %1 because of the way we did the smearing
+                                layer(i).boundaries(count)={B{b}-1+repmat([xstart,ystart],[size(B{b},1),1])}; 
+
+
                                 count=count+1;
                             end
                         end
                         
                         %Break out of looping over boundaries if there are
-                        %large boundaries
+                        %large boundaries and we need to restart
                         if proceed==0
                             break
                         end
@@ -557,20 +567,30 @@ FID = dxf_open(outputFileName);
 
 ctab={[1 0 0] [0 1 0] [0 0 1] [1 1 0] [1 0 1] [0 1 1] [1 0 0] [0 1 0] [0 0 1] [1 1 0] [1 0 1] [0 1 1] [1 0 0] [0 1 0] [0 0 1] [1 1 0] [1 0 1] [0 1 1]  };
 
+xpwrite=[xpold xpold(end)+dx]-dx/2; %we possibly added one point to the array
+ypwrite=[ypold ypold(end)+dx]-dx/2; %we possible added one point to the array
+
+% figure(558); clf; hold on;
+% title('Boundaries');
+
 for i=length(dvals):-1:1
     fprintf('Writing layer %d...',i)
     FID=dxf_set(FID,'Color',ctab{i}.*255,'Layer',i); % EJC: ctab{i} to ctab{i}.*255 (3/8/2019)
     for j=1:length(layer(i).boundaries)
         bb=layer(i).boundaries{j};
-        X=bb(:,2).*dx+minXExp;
-        Y=bb(:,1).*dx+minYExp;
+        X=xpwrite(bb(:,2)); X=X';
+        Y=ypwrite(bb(:,1)); Y=Y';
         Z=X.*0;
         dxf_polyline(FID,X,Y,Z);
+        %plot(X,Y);
     end
     fprintf('done.\n')
 end
 
 dxf_close(FID);
+
+
+
 
 %Save doses here
 doseFileName=[pathname filename(1:end-4) '_' descr '.txt'];

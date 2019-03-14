@@ -5,7 +5,7 @@ urpec generates a proximity-effect-corrected .dxf file for electron beam lithogr
 
 Right now this is intended for use with NPGS.
 
-To run urpec, download all files to a folder. Set you matlab path to this folder and run urpec, optionally with arguments. See the documentation inside urpec for calling urpec with arguments. 
+To run urpec, download all files to a folder. Set you matlab path to this folder and run urpec, optionally with arguments. See the documentation inside urpec for calling urpec with arguments. You can also run it from a script. This is useful for batch processing. See the script called run_urpec.
 
 Current PSFs available are 
 - GaAs, 30 kV, 200nm PMMA
@@ -18,13 +18,13 @@ If you need a different PSF, you should download Casino, run a simulation, save 
 Casino can be found here:
 http://www.gel.usherbrooke.ca/casino/What.html
 
-An example Casino simulation is included in the "Example stuff" directory. Open this file in Casino, modify your sample and microscope as necessary, and run the simulation. It should already have the necessary settings enabled. The top layer of your sample should be called PMMA in order for the analysis function to work. Set up the microscope to your desired voltage and make sure to simulate 2000 electrons. Make sure that your display is also set to display 2000 electrons. When the simulation has finished, save the data. Then open the file in excel, and resave as a .xlsx file. The resulting .xlsx file is compatible with the function casinoPSF, which extracts point spread function data. 
+An example Casino simulation is included in the "Examples" directory. Open this file in Casino, modify your sample and microscope as necessary, and run the simulation. It should already have the necessary settings enabled, but you need to change the number of electrons. Go to Setting>Set Up Microscope, and change the number of electrons to 2000. Also go to Settings>Run Time Options, and change the number of displayed trajectories fo 2000. To change the sample go to Settings>Modify Sample, and change the sample as needed. Note that the top layer of your sample should be called PMMA in order for the analysis function to work. When the simulation has finished, save the data. Then open the file in excel, and resave as a .xlsx file. The resulting .xlsx file is compatible with the function casinoPSF, which extracts point spread function data.
 
 dxflib is (c) Grzegorz Kwiatek. 
 It is distributed here for the sake of completeness. It can be found here:
 https://www.mathworks.com/matlabcentral/fileexchange/33884-dxflib
 
-dxf2coord_20 is written by Lukas Wischounig. 
+dxf2coord_20 is based on a script of the same name written by Lukas Wischounig. 
 It is distributed here for completeness. It can be found here:   
 https://www.mathworks.com/matlabcentral/fileexchange/28791-dxf2coord-2-0
 
