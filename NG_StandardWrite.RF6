@@ -1,0 +1,61 @@
+yx01,0100nnyy0200,1xy
+10
+Comment  T
+1
+<NPGS Mode Check>
+1
+
+MoveOnly M
+init_move_x,init_move_y
+Comment  T
+1
+<Stage Drift Wait>
+1
+
+dd_alignment1 AL
+1
+0,0
+cad_sm
+1
+0,0
+AlignSys P
+cad_med
+1
+0,0
+AlignSys P
+cad_lg
+1
+0,0
+MoveOnly M
+final_move_x,final_move_y
+lev_c1_50 1 s    0,0    323    al_mag_lg    1004.56    1004.56    sm_aperture    sm_aperture_current
+col -001 000 255 191 2 0.00001 1
+lev_c2_50 2 p    0,0    323    al_mag_lg    1012.44    1012.44    sm_aperture    sm_aperture_current
+col -001 000 255 191 2 0.00001 1
+lev_c3_50 3 w    0,0    323    al_mag_lg    1012.44    1012.44    sm_aperture    sm_aperture_current
+col -001 000 255 191 2 0.00001 1
+lev_c4_50 4 w    0,0    323    al_mag_lg    1012.44    1012.44    sm_aperture    sm_aperture_current
+col -001 000 255 191 2 0.00001 1
+lev_m1_1100 5 s    0,0    1202    al_mag_med    1012.44    1012.44    sm_aperture    sm_aperture_current
+col -001 127 000 255 2 0.00001 1
+lev_m2_1100 6 p    0,0    1202    al_mag_med    495.672    495.672    sm_aperture    sm_aperture_current
+col -001 127 000 255 2 0.00001 1
+lev_m3_1100 7 w    0,0    1202    al_mag_med    495.672    495.672    sm_aperture    sm_aperture_current
+col -001 127 000 255 2 0.00001 1
+lev_m4_1100 8 w    0,0    1202    al_mag_med    495.672    495.672    sm_aperture    sm_aperture_current
+col -001 127 000 255 2 0.00001 1
+lev_f1_1100 9 p    0,0    4871    al_mag_sm    42.2974    42.2974    sm_aperture    sm_aperture_current
+col -001 127 000 255 2 0.00001 1
+lev_f2_1100 10 s    0,0    4871    al_mag_sm    495.672    495.672    sm_aperture    sm_aperture_current
+col -001 127 000 255 2 0.00001 1
+lev_f3_1100 11 w    0,0    4871    al_mag_sm    42.2974    42.2974    sm_aperture    sm_aperture_current
+col -001 127 000 255 2 0.00001 1
+lev_f4_1100 12 w    0,0    4871    al_mag_sm    42.2974    42.2974    sm_aperture    sm_aperture_current
+col -001 127 000 255 2 0.00001 1
+*
+smallwriting
+*
+mediumwriting
+*
+largewriting
+*
