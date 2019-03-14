@@ -32,6 +32,10 @@ function [  ] = urpec( config )
 %   autoRes: enables auto adjustment of the resolution for ~10min
 %   computation time
 %
+%   File: datafile for processing
+%
+%   psfFile: point-spread function file
+%
 % call this function without any arguments, or via
 % urpec(struct('dx',0.005, 'subfieldSize',20,'maxIter',6,'dvals',[1:.2:2.4]))
 % for example
@@ -143,6 +147,9 @@ minX=minXold-padSize;
 maxY=maxYold+padSize;
 minY=minYold-padSize;
 
+xpold = minXold:dx:maxXold;
+ypold = minYold:dx:maxYold;
+
 xp = minX:dx:maxX;
 yp = minY:dx:maxY;
 
@@ -161,6 +168,9 @@ if config.autoRes && (totPoints<.8*config.targetPoints || totPoints>1.2*config.t
     minY=minYold-padSize;
     xp = minX:dx:maxX;
     yp = minY:dx:maxY;
+    xpold = minXold:dx:maxXold;
+    ypold = minYold:dx:maxYold;
+    
     fprintf('There are now %2.0e points.\n',length(xp)*length(yp));
 end
 
@@ -176,11 +186,11 @@ end
 xp = minX:dx:maxX;
 yp = minY:dx:maxY;
 [XP, YP] = meshgrid(xp, yp);
+
 [mp, np] = size(XP);
 
 totgridpts = length(xp)*length(yp);
 polysbin = zeros(size(XP));
-
 
 for ar = 1:length(objects) %EJC 5/5/2018: run time (should) scale ~linearly~ with med/sm object num
     p = objects{ar};
@@ -252,10 +262,14 @@ shape=polysbin>0; %1 inside shapes and 0 everywhere else
 
 dose=dstart;
 doseNew=shape; %initial guess at dose. Just the dose to clear everywhere
+figure(555); clf; imagesc(xp,yp,polysbin);
+set(gca,'YDir','norm');
+title('CAD pattern');
+drawnow;
 
 %iterate on convolving the psf, and add the difference between actual dose and desired dose to the programmed dose
 for i=1:config.maxIter
-    %doseActual=ifft2(fft2(doseNew.*polysbin).*fft2(psf)); %convolve with the point spread function, taking into account places that are dosed twice
+    %convolve with the point spread function, 
     %doseActual=ifft2(fft2(doseNew).*fft2(psf));
     doseActual=ifft2(fft2(doseNew).*fft2(psf).*fftshift(wind)); %use window to avoid ringing
 
@@ -264,13 +278,15 @@ for i=1:config.maxIter
     
     figure(556); clf;
     subplot(1,2,2);
-    imagesc(doseActual);
+    imagesc(yp,xp,doseActual);
     title(sprintf('Actual dose. Iteration %d',i));
+    set(gca,'YDir','norm');
     
-    doseNew=doseNew+(shape-doseShape); %Deonvolution: add the difference between the desired dose and the actual dose to the shape dose.
+    doseNew=doseNew+(shape-doseShape); %Deonvolution: add the difference between the desired dose and the actual dose to doseShape, defined above
     subplot(1,2,1);
-    imagesc(doseNew);
+    imagesc(yp,xp,doseNew);
     title(sprintf('Programmed dose. Iteration %d',i));
+    set(gca,'YDir','norm');
     
     drawnow;
 end
@@ -278,20 +294,26 @@ end
 dd=doseNew;
 ss=shape;
 
-doseNew=dd(padPoints+1:end-padPoints,padPoints+1:end-padPoints);
-shape=ss(padPoints+1:end-padPoints,padPoints+1:end-padPoints);
+doseNew=dd(padPoints+1:end-padPoints-1,padPoints+1:end-padPoints-1);
+shape=ss(padPoints+1:end-padPoints-1,padPoints+1:end-padPoints-1);
 mp=size(doseNew,1);
 np=size(doseNew,2);
-minXExp=minX+padSize;
-minYExp=minY+padSize;
+
+figure(557); clf;
+imagesc(xpold,ypold,doseNew);
+set(gca,'YDir','norm');
+title('Corrected dose');
+drawnow;
 
 fprintf('done.\n')
 
 fprintf('Fracturing...\n')
 
 %This is needed to not count the dose of places that get zero or NaN dose.
-doseNew(doseNew==0)=NaN;
-doseNew(doseNew<0)=NaN;
+try
+    doseNew(doseNew==0)=NaN;
+    doseNew(doseNew<0)=NaN;
+end
 
 dvals=config.dvals;
 nlayers=length(dvals);
@@ -381,14 +403,14 @@ for i=1:length(dvals);
             ystart=yinds(1);
             
             %double the size of each shot map to avoid single pixel
-            %features.
-            xinds=reshape([xinds;xinds],[1 2*length(xinds)]);
-            yinds=reshape([yinds;yinds],[1 2*length(yinds)]);
+            %features. No longer used. It was an attemp to avoid
+            %single-pixel features.
+%             xinds=reshape([xinds;xinds],[1 2*length(xinds)]);
+%             yinds=reshape([yinds;yinds],[1 2*length(yinds)]);
             
             subdata=layer(i).shotMap(xinds,yinds);
             
-            %Now "smear" out the shot map by one pixel (which is really
-            %half of an original pixel) in each direction. This makes sure that
+            %Now "smear" out the shot map by one pixel in each direction. This makes sure that
             %subfield boundaries touch each other.     
             sdll=padarray(subdata,[1,1],0,'pre');
             sdur=padarray(subdata,[1,1],0,'post');
@@ -447,7 +469,7 @@ for i=1:length(dvals);
                     
                     %Add boundaries to layer
                     for b=1:length(B)
-                        if ~isempty(B{b})
+                        if ~isempty(B{b}) && polyarea(B{b}(:,1),B{b}(:,2))>0
                             
                             %remove unnecessary vertices
                             B{b}=simplify_polygon(B{b});
@@ -478,7 +500,12 @@ for i=1:length(dvals);
                                 %shot map by 1/2 of an original pixel
                                 %Subtract 1/2 again because of the way we
                                 %doubled the size of the matrix.
-                                layer(i).boundaries(count)={B{b}/2-1/2-1/2+repmat([xstart,ystart],[size(B{b},1),1])}; 
+                                %layer(i).boundaries(count)={B{b}/2-1/2-1/2+repmat([xstart,ystart],[size(B{b},1),1])}; 
+                                
+                                %For use with undoubled matrices. Subtract
+                                %1 because of the way we did the smearing
+                                layer(i).boundaries(count)={B{b}-1+repmat([xstart,ystart],[size(B{b},1),1])}; 
+
 
                                 count=count+1;
                             end
@@ -540,20 +567,30 @@ FID = dxf_open(outputFileName);
 
 ctab={[1 0 0] [0 1 0] [0 0 1] [1 1 0] [1 0 1] [0 1 1] [1 0 0] [0 1 0] [0 0 1] [1 1 0] [1 0 1] [0 1 1] [1 0 0] [0 1 0] [0 0 1] [1 1 0] [1 0 1] [0 1 1]  };
 
+xpwrite=[xpold xpold(end)+dx]-dx/2; %we possibly added one point to the array
+ypwrite=[ypold ypold(end)+dx]-dx/2; %we possible added one point to the array
+
+% figure(558); clf; hold on;
+% title('Boundaries');
+
 for i=length(dvals):-1:1
     fprintf('Writing layer %d...',i)
     FID=dxf_set(FID,'Color',ctab{i}.*255,'Layer',i); % EJC: ctab{i} to ctab{i}.*255 (3/8/2019)
     for j=1:length(layer(i).boundaries)
         bb=layer(i).boundaries{j};
-        X=bb(:,2).*dx+minXExp;
-        Y=bb(:,1).*dx+minYExp;
+        X=xpwrite(bb(:,2)); X=X';
+        Y=ypwrite(bb(:,1)); Y=Y';
         Z=X.*0;
         dxf_polyline(FID,X,Y,Z);
+        %plot(X,Y);
     end
     fprintf('done.\n')
 end
 
 dxf_close(FID);
+
+
+
 
 %Save doses here
 doseFileName=[pathname filename(1:end-4) '_' descr '.txt'];
