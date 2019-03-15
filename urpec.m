@@ -78,6 +78,7 @@ if isempty(config.file)
     [filename pathname]=uigetfile('*.dxf');
 else
     [pathname,filename,ext] = fileparts(config.file);
+    pathname=[pathname '\'];
     filename=[filename ext];
 end
 
