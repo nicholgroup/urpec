@@ -315,14 +315,24 @@ switch templateID
         for i=1:length(slayers)
             strline1 = ['lev_' slayers{i} ' ' num2str(nextnum) ' w    0,0    29106    ' config.write_mag_sm '    42.2974    42.2974    ' sm_aperture '     ' sm_aperture_current];
             strline2 = ['col -001 ' char(scol{i}) ' 10.5239 ' num2str(sdose(i)) ' 0'];
+            if i==1
+            sm_str = sprintf('lev_%s %s w    0,0    29106    %s    42.2974    42.2974    %s     %s\ncol -001 %s 10.5239 %s 0',...
+                slayers{i}, num2str(nextnum), config.write_mag_sm, sm_aperture, sm_aperture_current, char(scol{i}), num2str(sdose(i)));
+            else
+                %sm_str = sprintf('%s\nlev_%s %s w    0,0    29106    %s    42.2974    42.2974    %s     %s\ncol -001 %s 10.5239 %s 0',...
+                %sm_str, slayers{i}, num2str(nextnum), config.write_mag_sm, sm_aperture, sm_aperture_current, char(scol{i}), num2str(sdose(i)));
+            end
             nextnum = nextnum + 1;
             if i==1
                 tot_str_s = strline1;
             else
-                tot_str_s = [tot_str_s newline strline1];
+                %tot_str_s = [tot_str_s newline strline1];
+                tot_str_s=sprintf('%s\r\n%s',tot_str_s,strline1);
             end
-            tot_str_s = [tot_str_s newline strline2];
+            %tot_str_s = [tot_str_s newline strline2];
+            tot_str_s=sprintf('%s\r\n%s',tot_str_s,strline2);
         end
+        %tot_str_s = sm_str;
         
         %med
         mlogic={}; % logical cell array if layer name exists
@@ -351,9 +361,11 @@ switch templateID
             if i==1
                 tot_str_m = strline1;
             else
-                tot_str_m = [tot_str_m newline strline1];
+                %tot_str_m = [tot_str_m newline strline1];
+                tot_str_m=sprintf('%s\r\n%s',tot_str_m,strline1);
             end
-            tot_str_m = [tot_str_m newline strline2];
+            %tot_str_m = [tot_str_m newline strline2];
+            tot_str_m=sprintf('%s\r\n%s',tot_str_m,strline2);
         end
         
         %lg
@@ -383,9 +395,11 @@ switch templateID
             if i==1
                 tot_str_l = strline1;
             else
-                tot_str_l = [tot_str_l newline strline1];
+                %tot_str_l = [tot_str_l newline strline1];
+                tot_str_l=sprintf('%s\r\n%s',tot_str_l,strline1);
             end
-            tot_str_l = [tot_str_l newline strline2];
+            %tot_str_l = [tot_str_l newline strline2];
+            tot_str_l=sprintf('%s\r\n%s',tot_str_l,strline2);
         end
         
         %replace text
@@ -397,7 +411,24 @@ switch templateID
         fprintf(fid,f);
         fclose(fid);
         
+        %place file in project directory
         copyfile(Path1, Path2);
+        
+        %Code to convert mixed terminator file to CRLF DOS formatting
+        %get unix path
+        %ind = [regexp(dir,'\')];
+        %projFolder = dir(ind(end-1)+1:end-1);
+        %unixpath = ['/mnt/c/NPGS/Projects/' projFolder '/' RunFile_Name];
+        
+        %convert to fix for dos formatting
+        %success = system(['bash -c ''unix2dos ' unixpath '''']);
+        %if success == 0
+        %    display('Conversion from unix to dos successful.');
+        %else
+        %    display('Conversion failed from unix to dos... Run file may not be editable in NPGS Run File Editor');
+        %end
+        %copy corrected file back to run files from matlab dir
+        copyfile(Path2,Path1);
         
         display(['Run file ' RunFile_Name ' created in ' Path2 ' with a backup created in ' Path1])
 end
