@@ -570,10 +570,12 @@ end
 
 
 %IDstring
-IDstring = num2str(round(100000 + 899999.*rand(1,1)));
+%IDstring = num2str(round(100000 + 899999.*rand(1,1)));
 
 %save the final file
-outputFileName=[pathname filename(1:end-4) '_' descr '_' IDstring '.dxf'];
+%outputFileName=[pathname filename(1:end-4) '_' descr '_' IDstring '.dxf'];
+outputFileName=[pathname filename(1:end-4) '_' descr '.dxf'];
+
 fprintf('Exporting to %s...\n',outputFileName);
 
 FID = dxf_open(outputFileName);
@@ -605,7 +607,9 @@ dxf_close(FID);
 
 
 %Save doses here
-doseFileName=[pathname filename(1:end-4) '_' descr '_' IDstring '.txt'];
+%doseFileName=[pathname filename(1:end-4) '_' descr '_' IDstring '.txt'];
+doseFileName=[pathname filename(1:end-4) '_' descr '.txt'];
+
 
 fileID = fopen(doseFileName,'w');
 fprintf(fileID,'%3.3f \r\n',dvalsAct);
