@@ -97,13 +97,17 @@ obj_num_ind_start = 1;
 for obj = 1:len % loop over each polyline
     c = lwpolylines(obj,1); % c = object number
     if c ~= count
-        objects{count} = lwpolylines(obj_num_ind_start:(obj-1), 1:3);
+        objects{count} = lwpolylines(obj_num_ind_start:(obj-1), 1:3); %ID, x, y
         obj_num_ind_start = obj;
         count = count + 1;
         if count == object_num
             objects{count} = lwpolylines(obj_num_ind_start:(len), 1:3);
         end
     end
+    
+end
+if object_num <= 1
+    objects{count} = lwpolylines(:, 1:3);
 end
 
 %grouping objects of the same size together
@@ -115,7 +119,11 @@ end
 
 display(['dxf CAD file analyzed.']);
 
-medall=vertcat(objects{1},objects{2});
+if length(objects)>1
+    medall=vertcat(objects{1},objects{2});
+else
+    medall = objects{1};
+end
 for i = 3:object_num
     medall = vertcat(medall, objects{i});
 end
@@ -559,8 +567,12 @@ if debug
     
 end
 
+
+%IDstring
+IDstring = num2str(round(100000 + 899999.*rand(1,1)));
+
 %save the final file
-outputFileName=[pathname filename(1:end-4) '_' descr '.dxf'];
+outputFileName=[pathname filename(1:end-4) '_' descr '_' IDstring '.dxf'];
 fprintf('Exporting to %s...\n',outputFileName);
 
 FID = dxf_open(outputFileName);
@@ -591,9 +603,8 @@ dxf_close(FID);
 
 
 
-
 %Save doses here
-doseFileName=[pathname filename(1:end-4) '_' descr '.txt'];
+doseFileName=[pathname filename(1:end-4) '_' descr '_' IDstring '.txt'];
 
 fileID = fopen(doseFileName,'w');
 fprintf(fileID,'%3.3f \r\n',dvalsAct);
