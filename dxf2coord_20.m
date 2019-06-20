@@ -1,4 +1,4 @@
-function [lwpolylines] =dxf2coord_20(pathname,filename);
+function [lwpolylines,lwpolylayers] =dxf2coord_20(pathname,filename);
 % dxf2coord 2.0 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                                                    
 % freeware                                                                %
 % author: lukas wischounig                                                %
@@ -334,7 +334,9 @@ clear lw_38 lwtemp_beg lwtemp_end lwclosed lwvertices lwtemp lwpolys  % delete g
 if exist ('threedpolynum','var')==1 
     
     threedpolylayers=cell(length(threedpolynum),1);                      %#ok<NASGU> % get entity layernames
-    threedpolylayers=dxfdata(threedpolynum-2);   
+    threedpolylayers=dxfdata(threedpolynum-4);  %JMN 2019/06/18. See autocad reference https://images.autodesk.com/adsk/files/autocad_2012_pdf_dxf-reference_enu.pdf p. 62
+    %threedpolylayers=dxfdata(threedpolynum-2);   
+
     
     for a=1:length(threedpolynum)                                                                               
             threedvertices=strcmp('AcDb3dPolylineVertex',dxfdata(threedpolynum(a):min(total(total>threedpolynum(a)))));                                 
@@ -399,6 +401,13 @@ end
 %%%%%%end%%%%%% data extraction
 
 %%%%%%end%%%%%%  get dxf data
+
+% All lines should actually just be lwpolys
+if ~exist('lwpolylines','var') && exist('threedpolys','var')
+    warning('Converting 3D polylines to 2D polylines');
+    lwpolylines=threedpolys(:,1:3);
+    lwpolylayers=threedpolylayers;
+end
 
 clear a b total fid dxfdata % delete garbage
 

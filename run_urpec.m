@@ -16,4 +16,16 @@ for i=1:length(files)
     config.file=files{i};
     urpec(config);
 end
+
+%% Make a run file
+
+config=struct();
+
+config.dtc='300';
+config.sm_aperture=30;
+config.lg_aperture=60;
+config.write_mag_sm='1100';
+
+urpec_writeJob(config);
+        
     

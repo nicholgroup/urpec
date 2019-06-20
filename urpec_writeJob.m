@@ -147,9 +147,12 @@ switch templateID
         display('Please choose layer doses...');
         [baseName, folder] = uigetfile('C:\NPGS\Projects\*.txt');
         file_doses = fullfile(folder, baseName);
-        doses_tab = readtable(file_doses);
-        doses = doses_tab(:,1);
-        doses = table2array(doses);
+
+        doses=load(file_doses);
+%         doses_tab = readtable(file_doses);
+%         doses = doses_tab(:,1);
+%         doses = table2array(doses);
+
         
         % convert dose percentages to actual doses using config.dtc
         doses = doses*str2num(config.dtc);
