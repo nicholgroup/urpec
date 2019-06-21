@@ -288,7 +288,7 @@ switch templateID
             colorstrings{i} = strrep(colorstrings{i},'0','000');
         end
         
-         % generate pattern writing text
+        %generate pattern writing text
         %small
         slogic={}; % logical cell array if layer name exists
         for i=1:length(doses)
