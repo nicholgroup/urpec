@@ -1,0 +1,10 @@
+yx01,0100nnyy0200,1xy
+2
+Comment T
+1
+<MAG>
+2
+Set mag to 120x on SEM
+Are you in NPGS mode?
+MoveOnly M
+400,400
