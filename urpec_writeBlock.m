@@ -1,73 +1,52 @@
 function [ s ] = writeBlock( config )
-%UNTITLED Summary of this function goes here
-%   Detailed explanation goes here
+%[ s ] = writeBlock( config )
+%   Generates text for an NPGS run file for pattern writing.
 
-switch config.sm_aperture
+curDir=pwd;
+
+cd(config.dir)
+
+switch config.aperture
     case 30
-        sm_aperture_current = '445.0';
-        sm_aperture = '1';
+        current = '445.0';
+        aperture = '1';
         
     case 7.5
-        sm_aperture_current = '17.0';
-        sm_aperture = '2';
+        current = '17.0';
+        aperture = '2';
         
     case 10
-        sm_aperture_current = '38.0';
-        sm_aperture = '3';
+        current = '38.0';
+        aperture = '3';
         
     case 40
-        sm_aperture_current = '600';
-        sm_aperture = '4';
+        current = '600';
+        aperture = '4';
         
     case 60
-        sm_aperture_current = '1400';
-        sm_aperture = '5';
+        current = '1400';
+        aperture = '5';
         
     case 120
-        sm_aperture_current = '6000';
-        sm_aperture = '6';
+        current = '6000';
+        aperture = '6';
         
-end
-
-switch config.lg_aperture
-    case 30
-        lg_aperture_current = '445.0';
-        lg_aperture = '1';
-    case 7.5
-        lg_aperture_current = '17.0';
-        lg_aperture = '2';
-    case 10
-        lg_aperture_current = '38.0';
-        lg_aperture = '3';
-    case 40
-        lg_aperture_current = '600';
-        lg_aperture = '4';
-    case 60
-        lg_aperture_current = '1400';
-        lg_aperture = '5';
-    case 120
-        lg_aperture_current = '6000';
-        lg_aperture = '6';
 end
 
 % select dose file
-display('Please choose layer doses...');
-[baseName, folder] = uigetfile('C:\NPGS\Projects\*.txt');
-file_doses = fullfile(folder, baseName);
+% display('Please choose layer doses...');
+% [baseName, folder] = uigetfile('C:\NPGS\Projects\*.txt');
+% file_doses = fullfile(folder, baseName);
 
-doses=load(file_doses);
+fprintf('Loading doses...\n');
+doses=load(config.doseFile);
 
 % convert dose percentages to actual doses using config.dtc
 doses = doses*str2num(config.dtc);
 
-% choose .dc2 files
-display('Please choose CAD file...');
-[cad,dir] = uigetfile([folder '\*.dc2']);
-fullCad = fullfile(dir,cad);
-cad=cad(1:end-4);
-
 %find layers in use
-cad_t = fileread(fullCad);
+fprintf('Loading cad file...\n');
+cad_t = fileread(config.cadFile);
 
 scad = strrep(cad_t,' ',''); % remove spaces
 ind = regexp(scad,'DoNotUse'); %find index... layers are right after
@@ -130,29 +109,26 @@ for i=1:length(slogic)
 end
 tot_str_s = '';
 nextnum = 2; %layer numbering starts at 2 and goes up with patterns created with urpec
+% basic format for each pair of lines is 
+% level #, layer #, mode, move, max mag, mag, spacing, spacing, aperture,
+% current, color, dwell time, dose, ?
 for i=1:length(slayers)
-    strline1 = ['lev_' slayers{i} ' ' num2str(nextnum) ' w    0,0    29106    ' config.write_mag_sm '    42.2974    42.2974    ' sm_aperture '     ' sm_aperture_current];
+    strline1 = ['lev_' slayers{i} ' ' num2str(nextnum) ' w    0,0    1500    ' config.mag '    ' config.spacing{1} '    ' config.spacing{2} '    ' aperture '     ' current];
     strline2 = ['col -001 ' char(scol{i}) ' 10.5239 ' num2str(sdose(i)) ' 0'];
-    if i==1
-        sm_str = sprintf('lev_%s %s w    0,0    29106    %s    42.2974    42.2974    %s     %s\ncol -001 %s 10.5239 %s 0',...
-            slayers{i}, num2str(nextnum), config.write_mag_sm, sm_aperture, sm_aperture_current, char(scol{i}), num2str(sdose(i)));
-    else
-        %sm_str = sprintf('%s\nlev_%s %s w    0,0    29106    %s    42.2974    42.2974    %s     %s\ncol -001 %s 10.5239 %s 0',...
-        %sm_str, slayers{i}, num2str(nextnum), config.write_mag_sm, sm_aperture, sm_aperture_current, char(scol{i}), num2str(sdose(i)));
-    end
+
     nextnum = nextnum + 1;
     if i==1
         tot_str_s = strline1;
     else
-        %tot_str_s = [tot_str_s newline strline1];
         tot_str_s=sprintf('%s\r\n%s',tot_str_s,strline1);
     end
-    %tot_str_s = [tot_str_s newline strline2];
     tot_str_s=sprintf('%s\r\n%s',tot_str_s,strline2);
 end
 
 
-s=tot_str_s
+s=tot_str_s;
+
+cd(curDir);
 
 
 end

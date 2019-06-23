@@ -1,70 +1,47 @@
 function [ s ] = urpec_alignBlock( config )
-%UNTITLED Summary of this function goes here
-%   Detailed explanation goes here
+%[ s ] = urpec_alignBlock( config )
+%   Generates text for an NPGS run file for alignment.
+%   See run_urpec for an example on how to set this up.
 
-%TODO: start new set somewhere
+%This function assumes that each alignment set consists of four marks, and
+%that the layers are aranged in order. For example, layers 1-4 correspond
+%to the coarse alignment, layers 5-8 correspond to the next alignment, etc.
+%This function only handles 12 layers now, but it could easily be extended.
 
-switch config.sm_aperture
+curDir=pwd;
+cd(config.dir);
+
+switch config.aperture
     case 30
-        sm_aperture_current = '445.0';
-        sm_aperture = '1';
+        current = '445.0';
+        aperture = '1';
         
     case 7.5
-        sm_aperture_current = '17.0';
-        sm_aperture = '2';
+        current = '17.0';
+        aperture = '2';
         
     case 10
-        sm_aperture_current = '38.0';
-        sm_aperture = '3';
+        current = '38.0';
+        aperture = '3';
         
     case 40
-        sm_aperture_current = '600';
-        sm_aperture = '4';
+        current = '600';
+        aperture = '4';
         
     case 60
-        sm_aperture_current = '1400';
-        sm_aperture = '5';
+        current = '1400';
+        aperture = '5';
         
     case 120
-        sm_aperture_current = '6000';
-        sm_aperture = '6';
+        current = '6000';
+        aperture = '6';
         
 end
-
-switch config.lg_aperture
-    case 30
-        lg_aperture_current = '445.0';
-        lg_aperture = '1';
-    case 7.5
-        lg_aperture_current = '17.0';
-        lg_aperture = '2';
-    case 10
-        lg_aperture_current = '38.0';
-        lg_aperture = '3';
-    case 40
-        lg_aperture_current = '600';
-        lg_aperture = '4';
-    case 60
-        lg_aperture_current = '1400';
-        lg_aperture = '5';
-    case 120
-        lg_aperture_current = '6000';
-        lg_aperture = '6';
-end
-
 
 doses=0.*ones(1,100);
 
-% convert dose percentages to actual doses using config.dtc
 
-% choose .dc2 files
-display('Please choose alignment file...');
-[cad,dir] = uigetfile('C:\NPGS\Projects\*.dc2');
-fullCad = fullfile(dir,cad);
-cad=cad(1:end-4);
-
-%find layers in use
-cad_t = fileread(fullCad);
+cad_t = fileread(config.cadFile);
 
 scad = strrep(cad_t,' ',''); % remove spaces
 ind = regexp(scad,'DoNotUse'); %find index... layers are right after
@@ -128,55 +105,60 @@ end
 tot_str_s = '';
 nextnum = 2; %layer numbering starts at 2 and goes up with patterns created with urpec
 for i=1:4
-    strline1 = ['lev_' slayers{i} ' ' num2str(nextnum) ' w    0,0    825    ' config.write_mag_sm '    528.717    528.717    ' sm_aperture '     ' sm_aperture_current];
+    strline1 = ['lev_' slayers{i} ' ' num2str(nextnum) ' w    0,0    825    ' config.mag '    528.717    528.717    ' aperture '     ' current];
     strline2 = ['col -001 ' char(scol{i}) ' 2 ' num2str(sdose(i)) ' 1'];
-    if i==1
-        sm_str = sprintf('lev_%s %s w    0,0    29106    %s    42.2974    42.2974    %s     %s\ncol -001 %s 10.5239 %s 0',...
-            slayers{i}, num2str(nextnum), config.write_mag_sm, sm_aperture, sm_aperture_current, char(scol{i}), num2str(sdose(i)));
-    else
-        %sm_str = sprintf('%s\nlev_%s %s w    0,0    29106    %s    42.2974    42.2974    %s     %s\ncol -001 %s 10.5239 %s 0',...
-        %sm_str, slayers{i}, num2str(nextnum), config.write_mag_sm, sm_aperture, sm_aperture_current, char(scol{i}), num2str(sdose(i)));
-    end
     nextnum = nextnum + 1;
     if i==1
         tot_str_s = strline1;
     else
-        %tot_str_s = [tot_str_s newline strline1];
         tot_str_s=sprintf('%s\r\n%s',tot_str_s,strline1);
     end
-    %tot_str_s = [tot_str_s newline strline2];
     tot_str_s=sprintf('%s\r\n%s',tot_str_s,strline2);
 end
 
-for i=5:8
-    if i==5
-        strline1 = ['lev_' slayers{i} ' ' num2str(nextnum) ' p    0,0    827    ' config.write_mag_sm '    264.359    264.359    ' sm_aperture '     ' sm_aperture_current];
-        strline2 = ['col -001 ' char(scol{i}) ' 2 ' num2str(sdose(i)) ' 1'];
-    else
-        strline1 = ['lev_' slayers{i} ' ' num2str(nextnum) ' w    0,0    827    ' config.write_mag_sm '    264.359    264.359    ' sm_aperture '     ' sm_aperture_current];
-        strline2 = ['col -001 ' char(scol{i}) ' 2 ' num2str(sdose(i)) ' 1'];
+try
+    for i=5:8
+        if i==5
+            strline1 = ['lev_' slayers{i} ' ' num2str(nextnum) ' p    0,0    827    ' config.mag '    264.359    264.359    ' aperture '     ' current];
+            strline2 = ['col -001 ' char(scol{i}) ' 2 ' num2str(sdose(i)) ' 1'];
+        else
+            strline1 = ['lev_' slayers{i} ' ' num2str(nextnum) ' w    0,0    827    ' config.mag '    264.359    264.359    ' aperture '     ' current];
+            strline2 = ['col -001 ' char(scol{i}) ' 2 ' num2str(sdose(i)) ' 1'];
+        end
+        nextnum = nextnum + 1;
+        if i==1
+            tot_str_s = strline1;
+        else
+            tot_str_s=sprintf('%s\r\n%s',tot_str_s,strline1);
+        end
+        tot_str_s=sprintf('%s\r\n%s',tot_str_s,strline2);
     end
-    if i==1
-        sm_str = sprintf('lev_%s %s w    0,0    29106    %s    42.2974    42.2974    %s     %s\ncol -001 %s 10.5239 %s 0',...
-            slayers{i}, num2str(nextnum), config.write_mag_sm, sm_aperture, sm_aperture_current, char(scol{i}), num2str(sdose(i)));
-    else
-        %sm_str = sprintf('%s\nlev_%s %s w    0,0    29106    %s    42.2974    42.2974    %s     %s\ncol -001 %s 10.5239 %s 0',...
-        %sm_str, slayers{i}, num2str(nextnum), config.write_mag_sm, sm_aperture, sm_aperture_current, char(scol{i}), num2str(sdose(i)));
-    end
-    nextnum = nextnum + 1;
-    if i==1
-        tot_str_s = strline1;
-    else
-        %tot_str_s = [tot_str_s newline strline1];
-        tot_str_s=sprintf('%s\r\n%s',tot_str_s,strline1);
-    end
-    %tot_str_s = [tot_str_s newline strline2];
-    tot_str_s=sprintf('%s\r\n%s',tot_str_s,strline2);
+catch
 end
 
+
+try
+    for i=9:12
+        if i==9
+            strline1 = ['lev_' slayers{i} ' ' num2str(nextnum) ' p    0,0    827    ' config.mag '    264.359    264.359    ' aperture '     ' current];
+            strline2 = ['col -001 ' char(scol{i}) ' 2 ' num2str(sdose(i)) ' 1'];
+        else
+            strline1 = ['lev_' slayers{i} ' ' num2str(nextnum) ' w    0,0    827    ' config.mag '    264.359    264.359    ' aperture '     ' current];
+            strline2 = ['col -001 ' char(scol{i}) ' 2 ' num2str(sdose(i)) ' 1'];
+        end
+        nextnum = nextnum + 1;
+        if i==1
+            tot_str_s = strline1;
+        else
+            tot_str_s=sprintf('%s\r\n%s',tot_str_s,strline1);
+        end
+        tot_str_s=sprintf('%s\r\n%s',tot_str_s,strline2);
+    end
+catch
+end
 
 s=tot_str_s;
 
-
+cd(curDir);
 end
 
