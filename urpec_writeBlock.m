@@ -45,7 +45,7 @@ doses=load(config.doseFile);
 doses = doses*str2num(config.dtc);
 
 %find layers in use
-fprintf('Loading cad file...\n');
+fprintf('Loading cad file from %s \n',config.cadFile);
 cad_t = fileread(config.cadFile);
 
 scad = strrep(cad_t,' ',''); % remove spaces
@@ -77,6 +77,10 @@ for i = 1:length(slayers)
             good = 0;
         end
     end
+end
+
+if length(slayers)==0
+    error('No layers found. Did you do NPGS>Save for NPGS? If not, try saving it again and rerunning.');
 end
 
 %colortab from urpec

@@ -65,24 +65,8 @@ function [] = urpec_writeJob(config)
 %TODO:
 % 1. Dose array config/template
 
-%Default entities for the header:
-% yx01,0100nnyy0200,1xy
-% # of entities
-
-% Default comment structure for the header:
-%Comment  T
-%1
-%<MAG>
-%6
-%Set mag to 120x on SEM
-%
-%If SEM doesn't allow you to change
-%mag, then you are not in NPGS mode.
-%Press ESC twice to exit, and engage
-%NPGS mode before processing run file.
-         
 if ~exist('config','var')
-  config=struct();
+    config=struct();
 end
 
 if ~isfield(config,'template')
@@ -99,7 +83,7 @@ else
 end
 
 switch templateID
-      
+    
     case 'NG_PatternOnly'
         display(['Creating job using ' templateID]);
         
@@ -163,12 +147,9 @@ switch templateID
         display('Please choose layer doses...');
         [baseName, folder] = uigetfile('C:\NPGS\Projects\*.txt');
         file_doses = fullfile(folder, baseName);
-
-        doses=load(file_doses);
-%         doses_tab = readtable(file_doses);
-%         doses = doses_tab(:,1);
-%         doses = table2array(doses);
-
+        doses_tab = readtable(file_doses);
+        doses = doses_tab(:,1);
+        doses = table2array(doses);
         
         % convert dose percentages to actual doses using config.dtc
         doses = doses*str2num(config.dtc);
@@ -306,6 +287,7 @@ switch templateID
         copyfile(Path2,Path1);
         
         display(['Run file ' RunFile_Name ' created in ' Path2 ' with a backup created in ' Path1])
+        
     
     case 'NG_StandardWrite'%'job_NPGS_NG_StandardWrite_Template'
         display(['Creating job using ' templateID]);
@@ -693,7 +675,6 @@ if(~isfield(s,f))
 end
 end
 
-
 % % testing
 % config= struct;
 % config.dtc = '400'
@@ -711,3 +692,5 @@ end
 % config.init_move_y = '-12';
 % config.final_move_x = '-747';
 % config.final_move_y = '-123';
+
+
