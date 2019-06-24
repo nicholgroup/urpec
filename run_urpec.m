@@ -147,7 +147,8 @@ for i=1:length(fields)
 end
 
 entities(end+1).type='move';
-entities(end).val={-initMove(1),-initMove(2)};
+lastMove=-(sum(moves)+initMove);
+entities(end).val={lastMove(1),LastMove(2)};
 
 entities(1).val={length(entities)-1};
 
