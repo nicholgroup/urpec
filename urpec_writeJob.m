@@ -35,6 +35,7 @@ function [] = urpec_writeJob(config)
 %       al_mag_lg (string): magnification for coarse alignment
 %       write_mag_sm (string): magnification for writing small features
 %       write_mag_lg (string): magnification for writing large features
+%       dtc (sring): dose to clear, in units of uC/cm^2
 %
 %
 %   Example config for 6 entity NPGS job file doing a 3 mag alignment and 2 aperture/2 mag write:
@@ -152,7 +153,12 @@ switch templateID
         doses = table2array(doses);
         
         % convert dose percentages to actual doses using config.dtc
-        doses = doses*str2num(config.dtc);
+        try
+            doses = doses*str2num(config.dtc);
+        catch
+            doses=doses*config.dtc;
+            warning('Config.dtc should really be a string.')
+        end
         
         % choose .dc2 files
         display('Please choose CAD file...');

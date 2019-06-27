@@ -105,7 +105,7 @@ end
 tot_str_s = '';
 nextnum = 2; %layer numbering starts at 2 and goes up with patterns created with urpec
 for i=1:4
-    strline1 = ['lev_' slayers{i} ' ' num2str(nextnum) ' w    0,0    825    ' config.mag '    528.717    528.717    ' aperture '     ' current];
+    strline1 = ['lev_' slayers{i} ' ' num2str(nextnum) ' w    0,0    825    ' config.mag '    ' config.spacing{1} '    ' config.spacing{2} '    ' aperture '     ' current];
     strline2 = ['col -001 ' char(scol{i}) ' 2 ' num2str(sdose(i)) ' 1'];
     nextnum = nextnum + 1;
     if i==1
@@ -119,10 +119,10 @@ end
 try
     for i=5:8
         if i==5
-            strline1 = ['lev_' slayers{i} ' ' num2str(nextnum) ' p    0,0    827    ' config.mag '    264.359    264.359    ' aperture '     ' current];
+            strline1 = ['lev_' slayers{i} ' ' num2str(nextnum) ' p    0,0    827    ' config.mag '    ' config.spacing{3} '    ' config.spacing{4} '    ' aperture '     ' current];
             strline2 = ['col -001 ' char(scol{i}) ' 2 ' num2str(sdose(i)) ' 1'];
         else
-            strline1 = ['lev_' slayers{i} ' ' num2str(nextnum) ' w    0,0    827    ' config.mag '    264.359    264.359    ' aperture '     ' current];
+            strline1 = ['lev_' slayers{i} ' ' num2str(nextnum) ' w    0,0    827    ' config.mag '    ' config.spacing{3} '    ' config.spacing{4} '    ' aperture '     ' current];
             strline2 = ['col -001 ' char(scol{i}) ' 2 ' num2str(sdose(i)) ' 1'];
         end
         nextnum = nextnum + 1;
