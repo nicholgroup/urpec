@@ -154,4 +154,11 @@ entities(1).val={length(entities)-1};
 
 urpec_makeRunFile(entities);
 
-    
+%% Make a run file with urpec_writeJob
+
+config=struct;
+config.dtc = '230';
+config.sm_aperture = 7.5;
+config.write_mag_sm = '1500';
+
+urpec_writeJob(config);
