@@ -140,10 +140,10 @@ end
 try
     for i=9:12
         if i==9
-            strline1 = ['lev_' slayers{i} ' ' num2str(nextnum) ' p    0,0    827    ' config.mag '    264.359    264.359    ' aperture '     ' current];
+            strline1 = ['lev_' slayers{i} ' ' num2str(nextnum) ' p    0,0    827    ' config.mag '    ' config.spacing{5} '    ' config.spacing{6} '    ' aperture '     ' current];
             strline2 = ['col -001 ' char(scol{i}) ' 2 ' num2str(sdose(i)) ' 1'];
         else
-            strline1 = ['lev_' slayers{i} ' ' num2str(nextnum) ' w    0,0    827    ' config.mag '    264.359    264.359    ' aperture '     ' current];
+            strline1 = ['lev_' slayers{i} ' ' num2str(nextnum) ' w    0,0    827    ' config.mag '    ' config.spacing{5} '    ' config.spacing{6} '    ' aperture '     ' current];
             strline2 = ['col -001 ' char(scol{i}) ' 2 ' num2str(sdose(i)) ' 1'];
         end
         nextnum = nextnum + 1;
