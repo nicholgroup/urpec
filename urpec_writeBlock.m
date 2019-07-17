@@ -4,7 +4,7 @@ function [ s ] = writeBlock( config )
 
 curDir=pwd;
 
-cd(config.dir)
+cd(config(1).dir)
 
 switch config.aperture
     case 30

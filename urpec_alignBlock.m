@@ -9,7 +9,7 @@ function [ s ] = urpec_alignBlock( config )
 %This function only handles 12 layers now, but it could easily be extended.
 
 curDir=pwd;
-cd(config.dir);
+cd(config(1).dir);
 
 switch config.aperture
     case 30
