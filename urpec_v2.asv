@@ -232,7 +232,7 @@ if config.field
     load([pname fname]);
 else
     fields=struct();
-    fields.fieldCenter=[0 0];
+    fields.center=[0 0];
 end
 
 for i=1:length(fields)
@@ -647,6 +647,7 @@ for i=1:length(layer)
             
             xq=xpwrite(layer(i).boundaries{b}(:,2));
             yq=ypwrite(layer(i).boundaries{b}(:,1));
+            if config.field
             xv=fields(j).box(:,1);
             yv=fields(j).box(:,2);
             
@@ -668,15 +669,18 @@ fprintf('done\.n')
 for j=1:length(fields)
     
     outputFileName=[pathname filename(1:end-4) '_' descr '_' num2str(j) '.dxf'];
+    dc2FileName=[pathname filename(1:end-4) '_' descr '_' num2str(j) '.dc2'];
+
     fprintf('Exporting to %s...\n',outputFileName);
-    fields(j).cadFile=[pathname filename(1:end-4) '_' descr '_' num2str(j) '.dc2'];
+    
+    fields(j).cadFile=[filename(1:end-4) '_' descr '_' num2str(j) '.dc2'];
     
     FID = dxf_open(outputFileName);
     
     ctab={[1 0 0] [0 1 0] [0 0 1] [1 1 0] [1 0 1] [0 1 1] [1 0 0] [0 1 0] [0 0 1] [1 1 0] [1 0 1] [0 1 1] [1 0 0] [0 1 0] [0 0 1] [1 1 0] [1 0 1] [0 1 1]  };
     
-        figure(558); clf; hold on;
-        title('Boundaries');
+    figure(558); clf; hold on;
+    title('Boundaries');
     %
     %     figure(559); clf; hold on;
     %     title('Shot Map');
@@ -698,8 +702,8 @@ for j=1:length(fields)
             dxf_polyline(FID,X,Y,Z);
             %plot(X,Y);
             
-            polygons(end+1).p=bb;
-            polygons(end).color=ctab{i};
+            polygons(end+1).p=[X Y];
+            polygons(end).color=ctab{i}.*255;
             polygons(end).layer=i;
             polygons(end).lineType=1;
             
@@ -711,6 +715,8 @@ for j=1:length(fields)
     
     dxf_close(FID);
     
+    dc2write(polygons,dc2FileName);
+    
     %Save doses here
     doseFileName=[pathname filename(1:end-4) '_' descr '_' num2str(j) '.txt'];
     
@@ -719,9 +725,9 @@ for j=1:length(fields)
     fclose(fileID);
     
     %Save all of the information in a .mat file for later.
-    fields(j).doseFile=doseFileName;
+    fields(j).doseFile=[filename(1:end-4) '_' descr '_' num2str(j) '.txt'];
     fields(j).dvalsAct=dvalsAct;
-    
+    fields(j).polygons=polygons;
     fprintf('Finished exporting.\n');
     
 

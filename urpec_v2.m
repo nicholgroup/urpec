@@ -232,7 +232,7 @@ if config.field
     load([pname fname]);
 else
     fields=struct();
-    fields.fieldCenter=[0 0];
+    fields.center=[0 0];
 end
 
 for i=1:length(fields)
@@ -629,7 +629,7 @@ for i=1:length(layer)
     inds=ones(1,length(layer(i).boundaries));
     
     for j=1:length(fields)
-         
+        
         polygons=struct();
         polygons(1)=[];
         
@@ -640,23 +640,27 @@ for i=1:length(layer)
         fields(j).layer(i).boundaries=[];
         
         for b=1:length(layer(i).boundaries)
-           
+            
             if ~inds(b)
                 continue
             end
             
             xq=xpwrite(layer(i).boundaries{b}(:,2));
             yq=ypwrite(layer(i).boundaries{b}(:,1));
-            xv=fields(j).box(:,1);
-            yv=fields(j).box(:,2);
-            
-            [in,on] = inpolygon(xq,yq,xv,yv);
-            
-            if any(in) || any(on)
-                inds(b)=0; %its already in a field now
-                fields(j).layer(i).boundaries=[fields(j).layer(i).boundaries layer(i).boundaries(b)];
+            if config.field
+                xv=fields(j).box(:,1);
+                yv=fields(j).box(:,2);
                 
-
+                [in,on] = inpolygon(xq,yq,xv,yv);
+                
+                if any(in) || any(on)
+                    inds(b)=0; %its already in a field now
+                    fields(j).layer(i).boundaries=[fields(j).layer(i).boundaries layer(i).boundaries(b)];
+                    
+                    
+                end
+            else
+                fields(j).layer(i).boundaries=layer(i).boundaries;
             end
             
         end
