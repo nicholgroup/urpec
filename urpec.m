@@ -637,6 +637,7 @@ for j=1:length(fields)
     %save the final file
     outputFileName=[pathname filename(1:end-4) '_' descr '_' num2str(j) '.dxf'];
     fprintf('Exporting to %s...\n',outputFileName);
+    fields(j).cadFile=[pathname filename(1:end-4) '_' descr '_' num2str(j) '.dc2'];
     
     FID = dxf_open(outputFileName);
     
@@ -674,19 +675,23 @@ for j=1:length(fields)
     
     dxf_close(FID);
     
-    
-    
-    
     %Save doses here
     doseFileName=[pathname filename(1:end-4) '_' descr '_' num2str(j) '.txt'];
-    
+
     fileID = fopen(doseFileName,'w');
     fprintf(fileID,'%3.3f \r\n',dvalsAct);
     fclose(fileID);
     
+    %Save all of the information in a .mat file for later.
+    fields(j).doseFile=doseFileName;
+    fields(j).dvalsAct=dvalsAct;
+
     fprintf('Finished exporting.\n');
+
 end
 
+fieldsFileName=[pathname filename(1:end-4) '_' descr '_fields.mat'];
+save(fieldsFileName,'fields');
 
 rmpath('dxflib');
 
