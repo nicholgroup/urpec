@@ -70,7 +70,7 @@ hblock=sprintf('%.4f %.4f %.4f %.4f 0 0\n',minX,minY,lx,ly);
 hblock=[hblock sprintf('20 0 0 0 0 0\n8.000000, 0.800000\n8.000000\n*\n23 %d 0 0 0 0\n\n',length(uniqueLayers)+1)];
 
 for k=1:length(uniqueLayers)
-    hblock=[hblock sprintf('%d\n',uniqueLayers(k))]
+    hblock=[hblock sprintf('%d\n',uniqueLayers(k))];
 end
 
 writeBlock=[hblock pblock];

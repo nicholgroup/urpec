@@ -54,6 +54,9 @@ function [  ] = urpec_v2( config )
 % Elliot Connors econnors@ur.rochester.edu
 % John Nichol jnich10@ur.rochester.edu
 %
+% Version history
+% v2: handles different write fields and writes directly to dc2 format.
+%
 
 tic
 
@@ -667,7 +670,7 @@ for i=1:length(layer)
     end
 end
 
-fprintf('done\.n')
+fprintf('done.\n')
 
 for j=1:length(fields)
     
