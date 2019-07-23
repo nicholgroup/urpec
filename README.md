@@ -34,6 +34,10 @@ fitwrap is (c) Hendrik Bluhm
 
 urpec is written by Adina Ripin, Elliot Connors, and John Nichol.
 
+Version history
+
+v2: 7/23/2019. Added capability for different write fields and writing directly to dc2 file.
+
 
 
 
