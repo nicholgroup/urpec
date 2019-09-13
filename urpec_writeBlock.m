@@ -50,7 +50,7 @@ cad_t = fileread(config.cadFile);
 
 scad = strrep(cad_t,' ',''); % remove spaces
 ind = regexp(scad,'DoNotUse'); %find index... layers are right after
-scad = scad(ind:ind+1000); %shorten
+scad = scad(ind:min([ind+1000,length(scad)])); %shorten
 scad(isspace(scad))='x'; %replace blanks with 'x'
 indstart = 9;% starting layers index
 indend = min(regexp(scad,'x212'))-1; %ending layers index
