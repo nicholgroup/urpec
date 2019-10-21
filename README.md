@@ -20,6 +20,8 @@ http://www.gel.usherbrooke.ca/casino/What.html
 
 An example Casino simulation is included in the "Examples" directory. Open this file in Casino, modify your sample and microscope as necessary, and run the simulation. It should already have the necessary settings enabled, but you need to change the number of electrons. Go to Setting>Set Up Microscope, and change the number of electrons to 2000. Also go to Settings>Run Time Options, and change the number of displayed trajectories fo 2000. To change the sample go to Settings>Modify Sample, and change the sample as needed. Note that the top layer of your sample should be called PMMA in order for the analysis function to work. When the simulation has finished, save the data. Then open the file in excel, and resave as a .xlsx file. The resulting .xlsx file is compatible with the function casinoPSF, which extracts point spread function data.
 
+There are currently two ways to generate NPGS run files with urpec. urpec_writeJob uses an existing run file template to create a run file. This works well if you are making minor tweaks or want to do a simple write. urpec_makeRunFile creates a new run file. See the script run_urpec for examples on how to make run files using both approaches.
+
 dxflib is (c) Grzegorz Kwiatek. 
 It is distributed here for the sake of completeness. It can be found here:
 https://www.mathworks.com/matlabcentral/fileexchange/33884-dxflib
@@ -31,6 +33,10 @@ https://www.mathworks.com/matlabcentral/fileexchange/28791-dxf2coord-2-0
 fitwrap is (c) Hendrik Bluhm
 
 urpec is written by Adina Ripin, Elliot Connors, and John Nichol.
+
+Version history
+
+v2: 7/23/2019. Added capability for different write fields and writing directly to dc2 file.
 
 
 
