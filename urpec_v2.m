@@ -683,7 +683,15 @@ for j=1:length(fields)
     
     FID = dxf_open(outputFileName);
     
-    ctab={[1 0 0] [0 1 0] [0 0 1] [1 1 0] [1 0 1] [0 1 1] [1 0 0] [0 1 0] [0 0 1] [1 1 0] [1 0 1] [0 1 1] [1 0 0] [0 1 0] [0 0 1] [1 1 0] [1 0 1] [0 1 1]  };
+    cmap=jet;
+    cinds=(1:1:length(dvals)).*length(jet)/length(dvals);
+    cinds=round(cinds)-1;
+    for i=1:length(cinds)
+        ctab{i}=cmap(cinds(i),:);
+    end
+    
+    
+    %ctab={[1 0 0] [0 1 0] [0 0 1] [1 1 0] [1 0 1] [0 1 1] [1 0 0] [0 1 0] [0 0 1] [1 1 0] [1 0 1] [0 1 1] [1 0 0] [0 1 0] [0 0 1] [1 1 0] [1 0 1] [0 1 1]  };
     
     figure(558); clf; hold on;
     title('Boundaries');
@@ -697,7 +705,9 @@ for j=1:length(fields)
     
     for i=length(dvals):-1:1
         fprintf('Writing layer %d...\n',i)
-        FID=dxf_set(FID,'Color',ctab{i}.*255,'Layer',i); % EJC: ctab{i} to ctab{i}.*255 (3/8/2019)
+        %FID=dxf_set(FID,'Color',ctab{i}.*255,'Layer',i); % EJC: ctab{i} to ctab{i}.*255 (3/8/2019)
+        FID=dxf_set(FID,'Color',ctab{i},'Layer',i); %JMN back to ctab{i}.*255*1. This is no longer needed because urpec saves dc2 files.
+
         %figure(558);
         
         for b=1:length(fields(j).layer(i).boundaries)
