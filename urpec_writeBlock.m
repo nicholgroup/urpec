@@ -84,12 +84,26 @@ if length(slayers)==0
 end
 
 %colortab from urpec
-ctab={[1 0 0] [0 1 0] [0 0 1] [1 1 0] [1 0 1] [0 1 1] [1 0 0] [0 1 0] [0 0 1] [1 1 0] [1 0 1] [0 1 1] [1 0 0] [0 1 0] [0 0 1] [1 1 0] [1 0 1] [0 1 1]  };
+%Warning, this is now hard coded for 15 different doses. 
+
+% cmap=jet;
+% cinds=(1:1:15).*length(jet)/15;
+% cinds=round(cinds)-1;
+% for i=1:length(cinds)
+%     ctab{i}=cmap(cinds(i),:);
+% end
+
+%ctab={[1 0 0] [0 1 0] [0 0 1] [1 1 0] [1 0 1] [0 1 1] [1 0 0] [0 1 0] [0 0 1] [1 1 0] [1 0 1] [0 1 1] [1 0 0] [0 1 0] [0 0 1] [1 1 0] [1 0 1] [0 1 1]  };
+
+%Jet-like colors
+ctab={[0 0 175] [0 0 255] [0 63 255] [0 127 255] [0 191 255] [15 255 239] [79 255 175] [143 255 111] [207 255 047] [255 223 0] [255 159 0] [255 095 0] [255 31 0] [207 0 0] [143 0 0]};
+
 colorstrings = {};
 for i=1:length(ctab)
-    ctabmat = 255.*ctab{i};
-    colorstrings{i} = {[num2str(ctabmat(1)) ' ' num2str(ctabmat(2)) ' ' num2str(ctabmat(3))]};
-    colorstrings{i} = strrep(colorstrings{i},'0','000');
+    ctabmat = ctab{i};
+    colorstrings{i}={[sprintf('%03d',ctabmat(1)) ' ' sprintf('%03d',ctabmat(2)) ' ' sprintf('%03d',ctabmat(3))]}
+    %colorstrings{i} = {[num2str(ctabmat(1)) ' ' num2str(ctabmat(2)) ' ' num2str(ctabmat(3))]};
+    %colorstrings{i} = strrep(colorstrings{i},'0','000');
 end
 
 %generate pattern writing text

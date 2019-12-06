@@ -683,15 +683,10 @@ for j=1:length(fields)
     
     FID = dxf_open(outputFileName);
     
-    cmap=jet;
-    cinds=(1:1:length(dvals)).*length(jet)/length(dvals);
-    cinds=round(cinds)-1;
-    for i=1:length(cinds)
-        ctab{i}=cmap(cinds(i),:);
-    end
-    
-    
     %ctab={[1 0 0] [0 1 0] [0 0 1] [1 1 0] [1 0 1] [0 1 1] [1 0 0] [0 1 0] [0 0 1] [1 1 0] [1 0 1] [0 1 1] [1 0 0] [0 1 0] [0 0 1] [1 1 0] [1 0 1] [0 1 1]  };
+    
+    %Jet-like colors from working run file
+    ctab={[0 0 175] [0 0 255] [0 63 255] [0 127 255] [0 191 255] [15 255 239] [79 255 175] [143 255 111] [207 255 047] [255 223 0] [255 159 0] [255 095 0] [255 31 0] [207 0 0] [143 0 0] };
     
     figure(558); clf; hold on;
     title('Boundaries');
