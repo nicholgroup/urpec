@@ -32,7 +32,7 @@ function [  ] = urpec_v2( config )
 %   autoRes: enables auto adjustment of the resolution for ~10min
 %   computation time
 %
-%   File: datafile for processing
+%   file: datafile for processing
 %
 %   psfFile: point-spread function file
 %
@@ -701,7 +701,7 @@ for j=1:length(fields)
     for i=length(dvals):-1:1
         fprintf('Writing layer %d...\n',i)
         %FID=dxf_set(FID,'Color',ctab{i}.*255,'Layer',i); % EJC: ctab{i} to ctab{i}.*255 (3/8/2019)
-        FID=dxf_set(FID,'Color',ctab{i},'Layer',i); %JMN back to ctab{i}.*255*1. This is no longer needed because urpec saves dc2 files.
+        FID=dxf_set(FID,'Color',ctab{i}./255,'Layer',i); %JMN back to ctab{i}.*255*1. This is no longer needed because urpec saves dc2 files.
 
         %figure(558);
         
@@ -714,7 +714,7 @@ for j=1:length(fields)
             %plot(X,Y);
             
             polygons(end+1).p=[X Y];
-            polygons(end).color=ctab{i}.*255;
+            polygons(end).color=ctab{i}; %JMN 2019/10/12
             polygons(end).layer=i;
             polygons(end).lineType=1;
             

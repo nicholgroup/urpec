@@ -101,7 +101,7 @@ ctab={[0 0 175] [0 0 255] [0 63 255] [0 127 255] [0 191 255] [15 255 239] [79 25
 colorstrings = {};
 for i=1:length(ctab)
     ctabmat = ctab{i};
-    colorstrings{i}={[sprintf('%03d',ctabmat(1)) ' ' sprintf('%03d',ctabmat(2)) ' ' sprintf('%03d',ctabmat(3))]}
+    colorstrings{i}={[sprintf('%03d',ctabmat(1)) ' ' sprintf('%03d',ctabmat(2)) ' ' sprintf('%03d',ctabmat(3))]};
     %colorstrings{i} = {[num2str(ctabmat(1)) ' ' num2str(ctabmat(2)) ' ' num2str(ctabmat(3))]};
     %colorstrings{i} = strrep(colorstrings{i},'0','000');
 end
