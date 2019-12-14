@@ -11,7 +11,9 @@ function [  ] = urpec_v2( config )
 % config is an optional struct with the following optional fields:
 %
 %   dx: spacing in units of microns for the deconvolution. The default is
-%   0.01 mcirons
+%   0.01 mcirons. It is also best to have the step size several times
+%   larger than the center-center or line-line spacing in npgs. 
+%
 %
 %   subfieldSize: size of subfields in fracturing. Default is 50 points. This
 %   is necessary for NPGS because the maximum polygon size in designCAD is
@@ -23,9 +25,6 @@ function [  ] = urpec_v2( config )
 %   dvals: doses corresponding to the layers in the output file. Default is
 %   1, 1.1, 1.9 in units of the dose to clear.
 %   
-%   windowVal: smoothing distance for the dose modulation. Units are
-%   approximately the grid spacing. Default is 10.
-%
 %   targetPoints: approximate number of points for the simulation. Default
 %   is 50e6.
 %
@@ -56,11 +55,12 @@ function [  ] = urpec_v2( config )
 %
 % Version history
 % v2: handles different write fields and writes directly to dc2 format.
+% v3: writes all doses to the same layer but with different colors. This is
+% useful for controlling the write order. The writing order is now the same
+% as the polygon save order.  Removed windowVal.
 %
 
 tic
-
-addpath('dxflib');
 
 debug=0;
 
@@ -73,12 +73,12 @@ config = def(config,'targetPoints',50e6);  %Target number of points for the simu
 config = def(config,'autoRes',true);  %auto adjust the resolution
 config = def(config,'subfieldSize',50);  %subfield size in microns
 config = def(config,'maxIter',6);  %max number of iterations for the deconvolution
-config = def(config,'dvals',[1:.1:2.4]);  %doses corresponding to output layers, in units of dose to clear
-config = def(config,'windowVal',10);  %Smoothing factor for the dose modultion. Default is 10. Units are approximately the grid spacing.
+config = def(config,'dvals',linspace(1,1.5,15));  %doses corresponding to output layers, in units of dose to clear
 config=def(config,'file',[]); 
 config=def(config,'psfFile',[]);
 config=def(config,'field',false);
 config=def(config,'fieldFile',[]);
+
 
 
 
@@ -295,15 +295,6 @@ elseif ypad<0
     polysbin=padarray(polysbin,[0,-ypad/2],0,'both');
 end
 
-%make a window to prevent ringing;
-wind=psf.*0;
-xwind=(size(psf,1)-1)/2;
-ywind=(size(psf,2)-1)/2;
-rw=min([xwind,ywind]);
-[xw yw]=meshgrid([-xwind:1:xwind],[-ywind:1:ywind]);
-wind=exp(-(xw.^2+yw.^2)./(rw/config.windowVal).^2);
-wind=wind';
-
 %normalize
 psf=psf./sum(psf(:));
 
@@ -318,13 +309,18 @@ title('CAD pattern');
 drawnow;
 
 %iterate on convolving the psf, and add the difference between actual dose and desired dose to the programmed dose
+meanDose=0;
 for i=1:config.maxIter
     %convolve with the point spread function, 
     %doseActual=ifft2(fft2(doseNew).*fft2(psf));
-    doseActual=ifft2(fft2(doseNew).*fft2(psf).*fftshift(wind)); %use window to avoid ringing
+    doseActual=ifft2(fft2(doseNew).*fft2(psf)); 
 
-    doseActual=real(fftshift(doseActual));
+    doseActual=real(fftshift(doseActual)); 
+    %The next line is needed becase we are tryin to do FFT shift on an
+    %array with an odd number of elements. 
+    doseActual(2:end,2:end)=doseActual(1:end-1,1:end-1);
     doseShape=doseActual.*shape; %total only given to shapes. Excludes area outside shapes. We don't actually care about this.
+    meanDose=nanmean(doseShape(:))./mean(shape(:))
     
     figure(556); clf;
     subplot(1,2,2);
@@ -339,6 +335,7 @@ for i=1:config.maxIter
     set(gca,'YDir','norm');
     
     drawnow;
+    
 end
 
 dd=doseNew;
@@ -349,21 +346,26 @@ shape=ss(padPoints+1:end-padPoints-1,padPoints+1:end-padPoints-1);
 mp=size(doseNew,1);
 np=size(doseNew,2);
 
-figure(557); clf;
-imagesc(xpold,ypold,doseNew);
-set(gca,'YDir','norm');
-title('Corrected dose');
-drawnow;
-
 fprintf('done.\n')
 
 fprintf('Fracturing...\n')
+
+figure(557); clf;
+subplot(1,2,1);
+imagesc(xpold,ypold,doseNew);
+set(gca,'YDir','norm');
+title('Corrected dose');
 
 %This is needed to not count the dose of places that get zero or NaN dose.
 try
     doseNew(doseNew==0)=NaN;
     doseNew(doseNew<0)=NaN;
 end
+
+subplot(1,2,2);
+hist(doseNew(:));
+xlabel(dose);
+drawnow;
 
 doseStore=doseNew;
 
@@ -375,7 +377,7 @@ layer=[];
 figSize=ceil(sqrt(nlayers));
 dvalsAct=[];
 subField=struct();
-subField.boundaries=[];
+subField.boundaries={};
 subField.layer=[];
 subField(mp,np).layer=[];
 
@@ -697,8 +699,8 @@ for j=1:length(fields)
     %Jet-like colors from working run file
     ctab={[0 0 175] [0 0 255] [0 63 255] [0 127 255] [0 191 255] [15 255 239] [79 255 175] [143 255 111] [207 255 047] [255 223 0] [255 159 0] [255 095 0] [255 31 0] [207 0 0] [143 0 0] };
     
-    figure(558); clf; hold on;
-    title('Boundaries');
+%     figure(558); clf; hold on;
+%     title('Boundaries');
     %
     %     figure(559); clf; hold on;
     %     title('Shot Map');
@@ -740,7 +742,7 @@ for j=1:length(fields)
         for m=1:xsubfields           
             for b=1:length(subField(m,n).boundaries)
                 i=subField(m,n).layer(b);
-                FID=dxf_set(FID,'Color',ctab{i}./255,'Layer',i); %JMN back to ctab{i}.*255*1. This is no longer needed because urpec saves dc2 files.
+                FID=dxf_set(FID,'Color',ctab{i}./255,'Layer',1); %JMN back to ctab{i}.*255*1. This is no longer needed because urpec saves dc2 files.
                 bb=subField(m,n).boundaries{b};
                 X=xpwrite(bb(:,2)); X=X'+fields(j).fieldShift(1);
                 Y=ypwrite(bb(:,1)); Y=Y'+fields(j).fieldShift(2);
@@ -750,7 +752,7 @@ for j=1:length(fields)
                 
                 polygons(end+1).p=[X Y];
                 polygons(end).color=ctab{i}; %JMN 2019/10/12
-                polygons(end).layer=i;
+                polygons(end).layer=1;
                 polygons(end).lineType=1;
                 
             end           
@@ -781,8 +783,6 @@ end
 
 fieldsFileName=[pathname filename(1:end-4) '_' descr '_fields.mat'];
 save(fieldsFileName,'fields');
-
-rmpath('dxflib');
 
 fprintf('urpec is finished.\n')
 
