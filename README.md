@@ -12,6 +12,8 @@ Current PSFs available are
 - GaAs, 30 kV, 400 nm PMMA
 - GaAs, 30 kV, 510 nm PMMA
 - Si, 30 kV, 200 nm PMMA
+- Si with 90 nm SiO2, 30 kV, 200 nm PMMA
+- LiNbO3, 30 kV, 200 nm PMMA
 
 If you need a different PSF, you should download Casino, run a simulation, save the data, and run the function casinoPSF.
 
@@ -37,6 +39,8 @@ urpec is written by Adina Ripin, Elliot Connors, and John Nichol.
 Version history
 
 v2: 7/23/2019. Added capability for different write fields and writing directly to dc2 file.
+v3: 12/18/2019. Fixed bug associated with fftshift. Now all patterns are written to the same layer in different colors. This enables control of the write order.
+
 
 
 
