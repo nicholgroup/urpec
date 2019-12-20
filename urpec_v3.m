@@ -6,6 +6,9 @@ function [  ] = urpec_v2( config )
 % This function assumes that one unit in the input pattern file is one
 % micron.
 %
+% Patterns are output in the same layer in which they were input. The dose
+% is modulated according to the color.
+%
 % Right now this is intended for use with NPGS.
 %
 % config is an optional struct with the following optional fields:
@@ -14,16 +17,14 @@ function [  ] = urpec_v2( config )
 %   0.01 mcirons. It is also best to have the step size several times
 %   larger than the center-center or line-line spacing in npgs. 
 %
-%
-%   subfieldSize: size of subfields in fracturing. Default is 50 points. This
-%   is necessary for NPGS because the maximum polygon size in designCAD is
-%   200 points.
+%   fracture: turns fracturing on or off. Not immplemented yet.
+%   
 %
 %   maxIter: maximum number of iterations for the deconvolution. Default is
 %   6.
 %
 %   dvals: doses corresponding to the layers in the output file. Default is
-%   1, 1.1, 1.9 in units of the dose to clear.
+%   1, 1.1, 2.5 in units of the dose to clear.
 %   
 %   targetPoints: approximate number of points for the simulation. Default
 %   is 50e6.
@@ -73,7 +74,7 @@ config = def(config,'targetPoints',50e6);  %Target number of points for the simu
 config = def(config,'autoRes',true);  %auto adjust the resolution
 config = def(config,'subfieldSize',50);  %subfield size in microns
 config = def(config,'maxIter',6);  %max number of iterations for the deconvolution
-config = def(config,'dvals',linspace(1,2.5,15));  %doses corresponding to output layers, in units of dose to clear
+config = def(config,'dvals',linspace(1,2.4,15));  %doses corresponding to output layers, in units of dose to clear
 config=def(config,'file',[]); 
 config=def(config,'psfFile',[]);
 config=def(config,'field',false);
@@ -200,13 +201,17 @@ if config.autoRes && (totPoints<.8*config.targetPoints || totPoints>1.2*config.t
     fprintf('There are now %2.0e points.\n',length(xp)*length(yp));
 end
 
-%make sure the number of points is odd. This is important for deconvolving the psf
+%make sure the number of points is odd. This is important for deconvolving
+%the psf
+addX=0;
 if ~mod(length(xp),2)
     maxX=maxX+dx;
+    addX=1;
 end
-
+addY=0;
 if ~mod(length(yp),2)
     maxY=maxY+dx;
+    addY=1;
 end
 
 xp = minX:dx:maxX;
@@ -244,6 +249,7 @@ end
 
 for ar = 1:length(objects) %EJC 5/5/2018: run time (should) scale ~linearly~ with med/sm object num
     p = objects{ar};
+    
     subpoly = inpolygon(XP, YP, p(:,2), p(:,3));
     %polysbin = or(polysbin, subpoly);
     
@@ -266,7 +272,7 @@ fprintf('Deconvolving psf...');
 eta=psf.eta;
 alpha=psf.alpha;
 beta=psf.beta;
-psfRange=psf.range;
+psfRange=10;%psf.range;
 descr=psf.descr;
 
 %target dx for making the psf. We will average later.
@@ -357,7 +363,7 @@ for i=1:config.maxIter
     title(sprintf('Actual dose. Iteration %d',i));
     set(gca,'YDir','norm');
     
-    doseNew=doseNew+(shape-doseShape); %Deonvolution: add the difference between the desired dose and the actual dose to doseShape, defined above
+    doseNew=doseNew+1.2*(shape-doseShape); %Deonvolution: add the difference between the desired dose and the actual dose to doseShape, defined above
     subplot(1,2,1);
     imagesc(yp,xp,doseNew);
     title(sprintf('Programmed dose. Iteration %d',i));
@@ -370,7 +376,7 @@ end
 dd=doseNew;
 ss=shape;
 %unpad arrays
-doseNew=dd(padPoints+1:end-padPoints-1,padPoints+1:end-padPoints-1);
+doseNew=dd(padPoints+1:end-padPoints-1*addY,padPoints+1:end-padPoints-1*addX);
 shape=ss(padPoints+1:end-padPoints-1,padPoints+1:end-padPoints-1);
 mp=size(doseNew,1);
 np=size(doseNew,2);
@@ -379,11 +385,6 @@ fprintf('done.\n')
 
 fprintf('Fracturing...\n')
 
-figure(557); clf;
-subplot(1,2,1);
-imagesc(xpold,ypold,doseNew);
-set(gca,'YDir','norm');
-title('Corrected dose');
 
 %This is needed to not count the dose of places that get zero or NaN dose.
 try
@@ -391,7 +392,7 @@ try
     doseNew(doseNew<0)=NaN;
 end
 
-subplot(1,2,2);
+figure(557); clf;
 hist(doseNew(:));
 xlabel(dose);
 drawnow;
@@ -405,11 +406,6 @@ dvalsr=dvals;
 layer=[];
 figSize=ceil(sqrt(nlayers));
 dvalsAct=[];
-subField=struct();
-subField.boundaries={};
-subField.layer=[];
-subField(mp,np).layer=[];
-
 
 
 %loop variables used here
@@ -420,222 +416,264 @@ subField(mp,np).layer=[];
 % b: boundaries
 % k: boundaries with holes
 
-for i=1:length(dvals)
-    fprintf('layer %d...\n',i);
+%TODO:
+% Loop over polygons
+% fracture them individually
+% 
+
+subField=struct();
+[XPold, YPold] = meshgrid(xpold, ypold);
+fracture=0;
+for ar = 1:length(objects) 
+    p=objects{ar};
+    p=p(:,2:3);
     
-    %Compute shot map for each layer
-    if i==1
-        layer(i).shotMap=doseNew<dvalsr(i).*shape;
-        layer(i).dose=dvals(i);
-        
-    elseif i==length(dvals)
-        layer(i).shotMap=doseNew>dvalsl(i).*shape;
-        layer(i).dose=dvals(i);
-        
+    pu=unique(p,'rows');
+    %the dxf importer has duplicate points. 
+    if length(pu)==length(p)/2-1
+        p=p(1:end/2,:);
+    end
+    
+    subField(ar).shape=p;
+    subpoly = inpolygon(XPold, YPold, p(:,1), p(:,2));
+    shotMap=doseNew.*subpoly;
+    try
+        shotMap(shotMap==0)=NaN;
+        shotMap(shotMap<0)=NaN;
+    end
+    
+    if fracture
+        %Not really implemented yet.
+        [b d]=fracturePoly(XP,YP,p,shotMap,dvals)
     else
-        layer(i).shotMap=(doseNew>dvalsl(i)).*(doseNew<dvalsr(i));
-        layer(i).dose=(dvalsl(i)+dvalsr(i))/2;
+        subField(ar).boundaries={p};
+        subField(ar).dose=squeeze(nanmean(shotMap(:)));
+        [mv,i]=min(abs(dvals-subField(ar).dose));
+        subField(ar).doseColor=i;
+        subField(ar).layer=layerNum(ar);
+        subField(ar).field=1;
     end
     
-    %Compute the actual mean dose in the layer.
-    dd=doseNew;
-    dd(isnan(dd))=0;
-    doseSum= sum(sum(layer(i).shotMap));
-    if doseSum>0
-        layer(i).meanDose=sum(sum(layer(i).shotMap.*dd))/sum(sum(layer(i).shotMap));
-        dvalsAct(i)=layer(i).meanDose;
-    else
-        layer(i).meanDose=dvals(i);
-        dvalsAct(i)=dvals(i);
-    end
-    
-    %break into subfields and find boundaries. This is necessary because
-    %designCAD can only handle polygons with less than ~200 points.
-    
-    subfieldSize = config.subfieldSize;
-    
-    layer(i).boundaries={};
-    count=1;
-    
-    decrease = 0;
-    disp = 0;
-    m=1;
-    n=1;
-    xsubfields=ceil(mp/subfieldSize);
-    ysubfields=ceil(np/subfieldSize);
-    decrease_sub = 1;
-    while (n <= ysubfields)    %change to xsubfields for horizontal writing
-        %decrease_sub=1;
-        m = 1;
-        %decrease_sub = 1;
-        while (m <= xsubfields) %change to ysubfields for horizontal writing
-            %EJC: add decrease_sub factor for halving sub field size when polygons are large
-            if decrease
-                subfieldSize = round(subfieldSize/decrease_sub);
-                decrease = 0;
-                disp = 0;
-            end
-            xsubfields=ceil(mp/subfieldSize);
-            ysubfields=ceil(np/subfieldSize);
-            if ~disp
-                display(['trying subfield size of ' num2str(subfieldSize) '. There are a total of ' num2str(xsubfields*ysubfields) ' subfields...']);
-                disp = 1;
-            end
-            proceed = 0;
-            
-            
-            subfield=zeros(mp,np);
-            %display(['Trying subfield size: ' num2str(mp/decrease_sub) 'x' num2str(np/decrease_sub)]);
-            if (m-1)*subfieldSize+1<min(m*subfieldSize,mp)
-                xinds=(m-1)*subfieldSize+1:1:min(m*subfieldSize,mp);
-            else
-                xinds=(m-1)*subfieldSize+1:1:min(m*subfieldSize,mp);
-            end
-            if (n-1)*subfieldSize+1 < min(n*subfieldSize,np)
-                yinds=(n-1)*subfieldSize+1:1:min(n*subfieldSize,np);
-            else
-                yinds=(n-1)*subfieldSize+1:1:min(n*subfieldSize,np);
-            end
-            
-            xstart=xinds(1);
-            ystart=yinds(1);
-            
-            %double the size of each shot map to avoid single pixel
-            %features. No longer used. It was an attemp to avoid
-            %single-pixel features.
-            %             xinds=reshape([xinds;xinds],[1 2*length(xinds)]);
-            %             yinds=reshape([yinds;yinds],[1 2*length(yinds)]);
-            
-            subdata=layer(i).shotMap(xinds,yinds);
-            
-            %Now "smear" out the shot map by one pixel in each direction. This makes sure that
-            %subfield boundaries touch each other.
-            sdll=padarray(subdata,[1,1],0,'pre');
-            sdur=padarray(subdata,[1,1],0,'post');
-            sdul=padarray(padarray(subdata,[1,0],'pre'),[0,1],'post');
-            sdlr=padarray(padarray(subdata,[1,0],'post'),[0,1],'pre');
-            
-            sd=sdll+sdur+sdul+sdlr;
-            sd(sd>0)=1;
-            subdata=sd;
-            
-            if (sum(subdata(:)))>0
-                
-                [B,L,nn,A]=bwboundaries(subdata);
-                
-                if debug
-                    figure(777); clf; hold on
-                    fprintf('Layer %d subfield (%d,%d) \n',i,m,n);
-                    for j=1:length(B)
-                        try
-                            bb=B{j};
-                            subplot(1,2,1); hold on;
-                            plot(bb(:,2),bb(:,1))
-                            axis([0 subfieldSize 0 subfieldSize]);
-                            subplot(1,2,2)
-                            imagesc(subdata); set(gca,'YDir','norm')
-                            axis([0 subfieldSize 0 subfieldSize]);
-                        end
-                        pause(1)
-                        
-                    end
-                    drawnow;
-                    pause(1);
-                end
-                
-                if ~isempty(B)
-                    for b=1:length(B)
-                        
-                        %Find any holes and fix them by adding them
-                        %appropriately to enclosing boundaries
-                        enclosing_boundaries=find(A(b,:));
-                        for k=1:length(enclosing_boundaries)
-                            b1=B{enclosing_boundaries(k)};% the enclosing boundary
-                            b2=B{b}; %the hole
-                            
-                            %Only keep the hole if it has >0 area.
-                            %Also, only keep the hole if there are no
-                            %overlapping lines in the hole. There should be only one
-                            %pair of matching vertices per polygon.
-                            if polyarea(b2(:,1),b2(:,2))>0 && (size(b2,1)-size(unique(b2,'rows'),1)==1)
-                                b1=[b1; b2; b1(end,:)]; %go from the enclosing boundary to the hole and back to the enclosing boundary
-                            end
-                            B{b}=[]; %get rid of the hole, since it is now part of the enclosing boundary
-                            B{enclosing_boundaries(k)}=b1; %add the boundary back to B.
-                        end
-                    end
-                    
-                    %Add boundaries to layer
-                    for b=1:length(B)
-                        if ~isempty(B{b}) && polyarea(B{b}(:,1),B{b}(:,2))>0
-                            
-                            %remove unnecessary vertices
-                            B{b}=simplify_polygon(B{b});
-                            
-                            %check for large polygons
-                            if size(B{b},1)>200%200
-                                fprintf('Large boundaries in layer %d. Halving subfield size and retrying... \n',i);
-                                
-                                %If large boundaries, make the subfields
-                                %smaller and restart;
-                                decrease = 1;
-                                decrease_sub = decrease_sub + 1;
-                                proceed = 0;
-                                disp = 0;
-                                m = 1;
-                                n = 1;
-                                count = 1;
-                                layer(i).boundaries = {};
-                                %anybad = 1;
-                            elseif ~decrease
-                                decrease_sub = 1;
-                                proceed = 1;
-                            end
-                            
-                            if proceed
-                                %divide by two because we doubled the size of the shot map
-                                %subtract 1/2 because we smeared out the
-                                %shot map by 1/2 of an original pixel
-                                %Subtract 1/2 again because of the way we
-                                %doubled the size of the matrix.
-                                %layer(i).boundaries(count)={B{b}/2-1/2-1/2+repmat([xstart,ystart],[size(B{b},1),1])};
-                                
-                                %For use with undoubled matrices. Subtract
-                                %1 because of the way we did the smearing
-                                layer(i).boundaries(count)={B{b}-1+repmat([xstart,ystart],[size(B{b},1),1])};
-                                
-                                subField(m,n).boundaries(end+1)={B{b}-1+repmat([xstart,ystart],[size(B{b},1),1])};
-                                subField(m,n).layer(end+1)=i;
-                                
-                                
-                                count=count+1;
-                            end
-                        end
-                        
-                        %Break out of looping over boundaries if there are
-                        %large boundaries and we need to restart
-                        if proceed==0
-                            break
-                        end
-                    end
-                end
-            else
-                proceed = 1;
-            end
-            if proceed
-                m = m+1;
-            end
-        end
-        if proceed
-            n = n+1;
-        end
-    end
-    
-    
-    fprintf('done.\n')
-    
-    
+    dvalsAct=dvals;
+
 end
+
+% for i=1:length(dvals)
+%     fprintf('layer %d...\n',i);
+%     
+%     %Compute shot map for each layer
+%     if i==1
+%         layer(i).shotMap=doseNew<dvalsr(i).*shape;
+%         layer(i).dose=dvals(i);
+%         
+%     elseif i==length(dvals)
+%         layer(i).shotMap=doseNew>dvalsl(i).*shape;
+%         layer(i).dose=dvals(i);
+%         
+%     else
+%         layer(i).shotMap=(doseNew>dvalsl(i)).*(doseNew<dvalsr(i));
+%         layer(i).dose=(dvalsl(i)+dvalsr(i))/2;
+%     end
+%     
+%     %Compute the actual mean dose in the layer.
+%     dd=doseNew;
+%     dd(isnan(dd))=0;
+%     doseSum= sum(sum(layer(i).shotMap));
+%     if doseSum>0
+%         layer(i).meanDose=sum(sum(layer(i).shotMap.*dd))/sum(sum(layer(i).shotMap));
+%         dvalsAct(i)=layer(i).meanDose;
+%     else
+%         layer(i).meanDose=dvals(i);
+%         dvalsAct(i)=dvals(i);
+%     end
+%     
+%     %break into subfields and find boundaries. This is necessary because
+%     %designCAD can only handle polygons with less than ~200 points.
+%     
+%     subfieldSize = config.subfieldSize;
+%     
+%     layer(i).boundaries={};
+%     count=1;
+%     
+%     decrease = 0;
+%     disp = 0;
+%     m=1;
+%     n=1;
+%     xsubfields=ceil(mp/subfieldSize);
+%     ysubfields=ceil(np/subfieldSize);
+%     decrease_sub = 1;
+%     while (n <= ysubfields)    %change to xsubfields for horizontal writing
+%         %decrease_sub=1;
+%         m = 1;
+%         %decrease_sub = 1;
+%         while (m <= xsubfields) %change to ysubfields for horizontal writing
+%             %EJC: add decrease_sub factor for halving sub field size when polygons are large
+%             if decrease
+%                 subfieldSize = round(subfieldSize/decrease_sub);
+%                 decrease = 0;
+%                 disp = 0;
+%             end
+%             xsubfields=ceil(mp/subfieldSize);
+%             ysubfields=ceil(np/subfieldSize);
+%             if ~disp
+%                 display(['trying subfield size of ' num2str(subfieldSize) '. There are a total of ' num2str(xsubfields*ysubfields) ' subfields...']);
+%                 disp = 1;
+%             end
+%             proceed = 0;
+%             
+%             
+%             subfield=zeros(mp,np);
+%             %display(['Trying subfield size: ' num2str(mp/decrease_sub) 'x' num2str(np/decrease_sub)]);
+%             if (m-1)*subfieldSize+1<min(m*subfieldSize,mp)
+%                 xinds=(m-1)*subfieldSize+1:1:min(m*subfieldSize,mp);
+%             else
+%                 xinds=(m-1)*subfieldSize+1:1:min(m*subfieldSize,mp);
+%             end
+%             if (n-1)*subfieldSize+1 < min(n*subfieldSize,np)
+%                 yinds=(n-1)*subfieldSize+1:1:min(n*subfieldSize,np);
+%             else
+%                 yinds=(n-1)*subfieldSize+1:1:min(n*subfieldSize,np);
+%             end
+%             
+%             xstart=xinds(1);
+%             ystart=yinds(1);
+%             
+%             %double the size of each shot map to avoid single pixel
+%             %features. No longer used. It was an attemp to avoid
+%             %single-pixel features.
+%             %             xinds=reshape([xinds;xinds],[1 2*length(xinds)]);
+%             %             yinds=reshape([yinds;yinds],[1 2*length(yinds)]);
+%             
+%             subdata=layer(i).shotMap(xinds,yinds);
+%             
+%             %Now "smear" out the shot map by one pixel in each direction. This makes sure that
+%             %subfield boundaries touch each other.
+%             sdll=padarray(subdata,[1,1],0,'pre');
+%             sdur=padarray(subdata,[1,1],0,'post');
+%             sdul=padarray(padarray(subdata,[1,0],'pre'),[0,1],'post');
+%             sdlr=padarray(padarray(subdata,[1,0],'post'),[0,1],'pre');
+%             
+%             sd=sdll+sdur+sdul+sdlr;
+%             sd(sd>0)=1;
+%             subdata=sd;
+%             
+%             if (sum(subdata(:)))>0
+%                 
+%                 [B,L,nn,A]=bwboundaries(subdata);
+%                 
+%                 if debug
+%                     figure(777); clf; hold on
+%                     fprintf('Layer %d subfield (%d,%d) \n',i,m,n);
+%                     for j=1:length(B)
+%                         try
+%                             bb=B{j};
+%                             subplot(1,2,1); hold on;
+%                             plot(bb(:,2),bb(:,1))
+%                             axis([0 subfieldSize 0 subfieldSize]);
+%                             subplot(1,2,2)
+%                             imagesc(subdata); set(gca,'YDir','norm')
+%                             axis([0 subfieldSize 0 subfieldSize]);
+%                         end
+%                         pause(1)
+%                         
+%                     end
+%                     drawnow;
+%                     pause(1);
+%                 end
+%                 
+%                 if ~isempty(B)
+%                     for b=1:length(B)
+%                         
+%                         %Find any holes and fix them by adding them
+%                         %appropriately to enclosing boundaries
+%                         enclosing_boundaries=find(A(b,:));
+%                         for k=1:length(enclosing_boundaries)
+%                             b1=B{enclosing_boundaries(k)};% the enclosing boundary
+%                             b2=B{b}; %the hole
+%                             
+%                             %Only keep the hole if it has >0 area.
+%                             %Also, only keep the hole if there are no
+%                             %overlapping lines in the hole. There should be only one
+%                             %pair of matching vertices per polygon.
+%                             if polyarea(b2(:,1),b2(:,2))>0 && (size(b2,1)-size(unique(b2,'rows'),1)==1)
+%                                 b1=[b1; b2; b1(end,:)]; %go from the enclosing boundary to the hole and back to the enclosing boundary
+%                             end
+%                             B{b}=[]; %get rid of the hole, since it is now part of the enclosing boundary
+%                             B{enclosing_boundaries(k)}=b1; %add the boundary back to B.
+%                         end
+%                     end
+%                     
+%                     %Add boundaries to layer
+%                     for b=1:length(B)
+%                         if ~isempty(B{b}) && polyarea(B{b}(:,1),B{b}(:,2))>0
+%                             
+%                             %remove unnecessary vertices
+%                             B{b}=simplify_polygon(B{b});
+%                             
+%                             %check for large polygons
+%                             if size(B{b},1)>200%200
+%                                 fprintf('Large boundaries in layer %d. Halving subfield size and retrying... \n',i);
+%                                 
+%                                 %If large boundaries, make the subfields
+%                                 %smaller and restart;
+%                                 decrease = 1;
+%                                 decrease_sub = decrease_sub + 1;
+%                                 proceed = 0;
+%                                 disp = 0;
+%                                 m = 1;
+%                                 n = 1;
+%                                 count = 1;
+%                                 layer(i).boundaries = {};
+%                                 %anybad = 1;
+%                             elseif ~decrease
+%                                 decrease_sub = 1;
+%                                 proceed = 1;
+%                             end
+%                             
+%                             if proceed
+%                                 %divide by two because we doubled the size of the shot map
+%                                 %subtract 1/2 because we smeared out the
+%                                 %shot map by 1/2 of an original pixel
+%                                 %Subtract 1/2 again because of the way we
+%                                 %doubled the size of the matrix.
+%                                 %layer(i).boundaries(count)={B{b}/2-1/2-1/2+repmat([xstart,ystart],[size(B{b},1),1])};
+%                                 
+%                                 %For use with undoubled matrices. Subtract
+%                                 %1 because of the way we did the smearing
+%                                 layer(i).boundaries(count)={B{b}-1+repmat([xstart,ystart],[size(B{b},1),1])};
+%                                 
+%                                 subField(m,n).boundaries(end+1)={B{b}-1+repmat([xstart,ystart],[size(B{b},1),1])};
+%                                 subField(m,n).layer(end+1)=i;
+%                                 
+%                                 
+%                                 count=count+1;
+%                             end
+%                         end
+%                         
+%                         %Break out of looping over boundaries if there are
+%                         %large boundaries and we need to restart
+%                         if proceed==0
+%                             break
+%                         end
+%                     end
+%                 end
+%             else
+%                 proceed = 1;
+%             end
+%             if proceed
+%                 m = m+1;
+%             end
+%         end
+%         if proceed
+%             n = n+1;
+%         end
+%     end
+%     
+%     
+%     fprintf('done.\n')
+%     
+%     
+% end
 fprintf('Fracturing complete. \n')
 
 %Inspect layers if needed
@@ -663,11 +701,13 @@ end
 %save the final files
 
 %Coordinates for the pixels in the shot map
-xpwrite=[xpold xpold(end)+dx]-dx/2; %we possibly added one point to the array
-ypwrite=[ypold ypold(end)+dx]-dx/2; %we possible added one point to the array
+xpwrite=xpold;%[xpold xpold(end)+dx]-dx/2; %we possibly added one point to the array
+ypwrite=ypold; %[ypold ypold(end)+dx]-dx/2; %we possible added one point to the array
 
 fprintf('Fracturing write fields...')
-% Go through the layers, and find out which polygons belong to which fields
+%Go through the subFields, and find out which polygons belong to which fields
+%TODO: need to loop through subfields here.
+%JMN: not working yet
 for i=1:length(layer)
     inds=ones(1,length(layer(i).boundaries));
     
@@ -767,25 +807,25 @@ for j=1:length(fields)
     
     %Write in order of subfields. This makes more sense. Change the outer
     %loop to change the direction of writing.
-    for n=1:ysubfields
-        for m=1:xsubfields           
-            for b=1:length(subField(m,n).boundaries)
-                i=subField(m,n).layer(b);
+    for ar=1:length(subField)
+          
+            for b=1:length(subField(ar).boundaries)
+                i=subField(ar).doseColor(b);
                 FID=dxf_set(FID,'Color',ctab{i}./255,'Layer',1); %JMN back to ctab{i}.*255*1. This is no longer needed because urpec saves dc2 files.
-                bb=subField(m,n).boundaries{b};
-                X=xpwrite(bb(:,2)); X=X'+fields(j).fieldShift(1);
-                Y=ypwrite(bb(:,1)); Y=Y'+fields(j).fieldShift(2);
+                bb=subField(ar).boundaries{b};
+                X=bb(:,1); X=X+fields(j).fieldShift(1);
+                Y=bb(:,2); Y=Y+fields(j).fieldShift(2);
                 Z=X.*0;
                 dxf_polyline(FID,X,Y,Z);
                 %plot(X,Y);
                 
                 polygons(end+1).p=[X Y];
                 polygons(end).color=ctab{i}; %JMN 2019/10/12
-                polygons(end).layer=1;
+                polygons(end).layer=subField(ar).layer;
                 polygons(end).lineType=1;
                 
             end           
-        end
+        
     end
 
     
