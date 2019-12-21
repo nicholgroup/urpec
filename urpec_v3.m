@@ -58,7 +58,7 @@ function [  ] = urpec_v2( config )
 % v2: handles different write fields and writes directly to dc2 format.
 % v3: writes all doses to the same layer but with different colors. This is
 % useful for controlling the write order. The writing order is now the same
-% as the polygon save order.  Removed windowVal.
+% as the polygon save order.  Fracturing is new and improved.
 %
 
 tic
@@ -272,7 +272,8 @@ fprintf('Deconvolving psf...');
 eta=psf.eta;
 alpha=psf.alpha;
 beta=psf.beta;
-psfRange=10;%psf.range;
+minSize=min([max(abs(XP(:))),max(abs(YP(:)))]);
+psfRange=round(min([minSize,20]));
 descr=psf.descr;
 
 %target dx for making the psf. We will average later.
