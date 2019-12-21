@@ -404,6 +404,15 @@ dvalsAct=[];
 % fracture them individually
 % 
 
+% d.xp=xp;
+% d.yp=yp;
+% d.xpold=xpold;
+% d.ypold=ypold;
+% d.objects=objects;
+% d.doseNew=doseNew;
+% d.dvals=dvals;
+% %save('fractureData','d');
+
 subField=struct();
 [XPold, YPold] = meshgrid(xpold, ypold);
 fracture=0;
