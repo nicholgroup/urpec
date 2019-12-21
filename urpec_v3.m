@@ -295,31 +295,6 @@ psfBackscatter=1/(1+eta).*(eta/(pi*beta^2).*exp(-rpsf2./beta.^2));
 %correct.
 psf=psfForward./sum(psfForward(:))+eta*psfBackscatter./sum(psfBackscatter(:));
 
-%this is the upper right quadrant
-%We need to start from -.5 to make sure the first points correspond to the
-%psf at r=0;
-% [xpsf ypsf]=meshgrid([-.5:1:(npsf-1)*dx_f-1],[-.5:1:(npsf-1)*dx_f-1]);
-% xpsf=xpsf.*dx/dx_f;
-% ypsf=ypsf.*dx/dx_f;
-% rpsf2=xpsf.^2+ypsf.^2;
-% psf=1/(1+eta).*(1/(pi*alpha^2).*exp(-rpsf2./alpha.^2)+eta/(pi*beta^2).*exp(-rpsf2./beta.^2));
-% 
-% %properly average the psf quadrant we have just created.
-% psf = reshape(psf, size(psf,1), dx_f,size(psf,2)/dx_f);
-% psf = squeeze(mean(psf, 2));
-% psf=psf';
-% psf=reshape(psf, size(psf,1), dx_f,size(psf,2)/dx_f);
-% psf = squeeze(mean(psf, 2));
-% psf=psf';
-% 
-% %Now we need to make the full psf by assembling all of the quadrants.
-% psf_ur=psf;
-% psf_ul=fliplr(psf(:,2:end));
-% psf_tot=[psf_ul, psf_ur];
-% psf_l=flipud(psf_tot(2:end,:));
-% psf_tot=[psf_l;psf_tot];
-% psf=psf_tot;
-
 %Zero pad to at least 10um x 10 um;
 %pad in the x direction
 xpad=size(polysbin,1)-size(psf,1);
