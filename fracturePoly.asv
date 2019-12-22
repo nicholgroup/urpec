@@ -65,12 +65,11 @@ else %Need to fracture
                     poly(i).sizeY=
                     %Fracture it here
                     polys=
-                                        
+                    
+                    numPolys=
+                    
                     polysEnd=poly(i+1:end); 
                     poly=[poly(1:i-1) polys polysEnd];
-                    
-                    totPolys=length(poly)
-                    count=count+length(polys(:))
                     
                     
                 end
