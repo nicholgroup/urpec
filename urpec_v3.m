@@ -76,6 +76,9 @@ config = def(config,'dvals',linspace(1,2.4,15));  %doses corresponding to output
 config=def(config,'file',[]); 
 config=def(config,'psfFile',[]);
 
+%used below.
+ctab={[0 0 175] [0 0 255] [0 63 255] [0 127 255] [0 191 255] [15 255 239] [79 255 175] [143 255 111] [207 255 047] [255 223 0] [255 159 0] [255 095 0] [255 31 0] [207 0 0] [143 0 0] };
+
 
 dx = config.dx;
 subfieldSize=config.subfieldSize;
@@ -455,7 +458,7 @@ for ar = 1:length(objects)
 %         hold on; plot(p(:,1),p(:,2));
         
         minSize=config.dx*4; %Smallest eventual polygon size
-        fracNum=4; %number of times to fracture each polygon each iteration.
+        fracNum=3; %number of times to fracture each polygon each iteration.
         
         if (maxDose-minDose)<dDose %don't need to fracture          
             subField(ar).poly(1).x=p(:,1);
@@ -478,38 +481,81 @@ for ar = 1:length(objects)
             nPolys=1;
             iter=0;
             while ~allGood
-%                 figure(777); clf; hold on;
-%                 for j=1:length(poly)
-%                     plot(poly(j).x,poly(j).y);
-%                 end
-%                 drawnow;
+               %Show the fracturing status. Also check for empty polygons
+               %and zero-area polygons. 
+               %figure(777); clf; hold on; 
+                for j=(length(poly):-1:1)
+                    if isempty(poly(j).x)
+                        poly(j)=[];
+                    elseif polyarea(poly(j).x,poly(j).y)==0
+                        poly(j)=[];
+                    else
+                        %plot(poly(j).x,poly(j).y,'Color',ctab{poly(j).dose}./255);
+                    end
+                end
+                %drawnow;
                 iter=iter+1;
                 i=1;
-                while i<=nPolys
+                while i<=nPolys              
                     i;
                     if ~poly(i).good
                         poly(i).sizeX=max(poly(i).x)-min(poly(i).x);
                         poly(i).sizeY=max(poly(i).y)-min(poly(i).y);
+                    
+%                       %In preparation for fracturing, reduce the size of the shot map.
+                        maxX=max(poly(i).x);
+                        maxY=max(poly(i).y);
+                        minX=min(poly(i).x);
+                        minY=min(poly(i).y);                        
+                        xinds=round([(minX-xpold(1))/dx+1:(maxX-xpold(1))/dx+1]);
+                        yinds=round([(minY-ypold(1))/dy+1:(maxY-ypold(1))/dy+1]);                                                
+                        shotMapNew=shotMap(yinds,xinds);
+                        XPnew=XPold(yinds,xinds)+dx/2; xpnew=xpold(xinds)+dx/2;
+                        YPnew=YPold(yinds,xinds)+dy/2; ypnew=ypold(yinds)+dy/2;
                         
-                        canFracX=poly(i).sizeX/fracNum>minSize;
-                        canFracY=poly(i).sizeY/fracNum>minSize;
+                        xline=squeeze(nanmean(shotMapNew,1));
+                        yline=squeeze(nanmean(shotMapNew,2));
+                        xdiff=max(xline)-min(xline);
+                        ydiff=max(yline)-min(yline);
                         
-                        if canFracX && canFracY
-                            polys2Add=DIVIDEXY(poly(i),canFracX*(fracNum-1)+1,canFracY*(fracNum-1)+1);
+                        shouldFracX=(xdiff>dDose/2);
+                        shouldFracY=(ydiff>dDose/2);
+                        canFracX=(poly(i).sizeX/fracNum>minSize);
+                        canFracY=(poly(i).sizeY/fracNum>minSize);
+                        
+                        %Actually do the fracturing
+                        if canFracX || canFracY
+                            polys2Add=DIVIDEXY(poly(i),canFracX*shouldFracX*(fracNum-1)+1,canFracY*shouldFracY*(fracNum-1)+1);
                             polys2Add=polys2Add(:);
                         else
                             polys2Add={};
                         end
                         
+                        %Check for empty polys and get rid of them
+                        for j=(length(polys2Add):-1:1)
+                            if isempty(polys2Add{j}) || any(size(polys2Add{j}.x)~=size(polys2Add{j}.y))
+                                polys2Add(j)=[];
+                            end
+                        end
+                        
+                        %If after all this we didn't actually fracture,
+                        %then skip and move on.
+                        if length(polys2Add)==1
+                            polys2Add={};
+                            i=i+1;
+                        end
+                        
+                        %Go through the new polygons and find out if
+                        %they're good.
                         for j=1:length(polys2Add)
                             %plot(polys2Add{j}.x,polys2Add{j}.y)
                             %Close the polys.
+                           
                             polys2Add{j}.x= [polys2Add{j}.x polys2Add{j}.x(1)];
                             polys2Add{j}.y= [polys2Add{j}.y polys2Add{j}.y(1)];
                             polys2Add{j}.x= polys2Add{j}.x';
                             polys2Add{j}.y= polys2Add{j}.y';                            
                             polys2Add{j}.good=0;
-                            polys2Add{j}.dose=1;
                             polys2Add{j}.sizeX=max(poly(i).x)-min(poly(i).x);
                             polys2Add{j}.sizeY=max(poly(i).y)-min(poly(i).y);
                             polys2Add{j}.layer=ceil(layerNum(ar)/2);
@@ -518,17 +564,17 @@ for ar = 1:length(objects)
                             sm=shotMapNew.*subpoly;
                             sm(sm==0)=NaN;
                             maxDose=max(sm(:));
-                            minDose=min(sm(:));                          
+                            minDose=min(sm(:));
+                            
+                            [mv,ind]=min(abs(dvals-nanmean(sm(:))));
+                            polys2Add{j}.dose= ind;
 
                             if (maxDose-minDose)<dDose %don't need to fracture
-                                polys2Add{j}.good=1;
-                                [mv,ind]=min(abs(dvals-nanmean(sm(:))));
-                                polys2Add{j}.dose= ind;
-                                
+                                polys2Add{j}.good=1;                                
                             end
                         end
                         
-                        %Add them to the list of polygons
+                        %Add the new polygons back to the total list of polygons
                         if ~isempty(polys2Add)
                             if iter==1
                                 for j=1:length(polys2Add)
@@ -541,7 +587,7 @@ for ar = 1:length(objects)
                             end
                         end
                         
-                        %update the polygon list and the counter.
+                        %Update the tot polygon number and counter (i)
                         nPolys=length(poly);
                         i=i+length(polys2Add);
                         
@@ -549,12 +595,14 @@ for ar = 1:length(objects)
                         i=i+1;
                     end
                     
-                    allGood=all([poly.good]);                  
-            
+                    %If we can't fracture anymore, call it good.
                     if ~canFracX && ~canFracY
                         poly(i).good=1;
                     end
                 end
+                
+                allGood=all([poly.good]);    
+                
             end
             
             subField(ar).poly=poly;                      
@@ -567,11 +615,10 @@ for ar = 1:length(objects)
         subField(ar).poly(1).y=p(:,2);
         [mv,ind]=min(abs(dvals-squeeze(nanmean(shotMap(:)))));
         subField(ar).poly(1).dose=ind;
-        subField(ar).poly(1).layer=layerNum(ar);
+        subField(ar).poly(1).layer=ceil(layerNum(ar)/2);
     end
 
 end
-
 
 fprintf('Fracturing complete. \n')
 
@@ -599,7 +646,7 @@ for ar=1:length(subField)
     for b=1:length(subField(ar).poly)
         if ~isempty(subField(ar).poly(b).x) %Needed because sometimes our fracturing algorithm generates empty polygons.
             i=subField(ar).poly(b).dose;
-            FID=dxf_set(FID,'Color',ctab{i}./255,'Layer',1); %JMN back to ctab{i}.*255*1. This is no longer needed because urpec saves dc2 files.
+            FID=dxf_set(FID,'Color',ctab{i}./255,'Layer',subField(ar).poly(b).layer); 
             X=subField(ar).poly(b).x;
             Y=subField(ar).poly(b).y;
             Z=X.*0;
