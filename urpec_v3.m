@@ -507,8 +507,8 @@ for ar = 1:length(objects)
                         maxY=max(poly(i).y);
                         minX=min(poly(i).x);
                         minY=min(poly(i).y);                        
-                        xinds=round([(minX-xpold(1))/dx+1:(maxX-xpold(1))/dx+1]);
-                        yinds=round([(minY-ypold(1))/dy+1:(maxY-ypold(1))/dy+1]);                                                
+                        xinds=round([(minX-xpold(1))/dx+1:(maxX-xpold(1))/dx]);
+                        yinds=round([(minY-ypold(1))/dy+1:(maxY-ypold(1))/dy]);                                                
                         shotMapNew=shotMap(yinds,xinds);
                         XPnew=XPold(yinds,xinds)+dx/2; xpnew=xpold(xinds)+dx/2;
                         YPnew=YPold(yinds,xinds)+dy/2; ypnew=ypold(yinds)+dy/2;
