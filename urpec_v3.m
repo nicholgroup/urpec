@@ -395,7 +395,9 @@ dvalsAct=[];
 % d.dvals=dvals;
 % %save('fractureData','d');
 
-fprintf('Fracturing...\n')
+fprintf('Fracturing...\n');
+fracCount=0;
+fracDebug=0;
 
 subField=struct();
 [XPold, YPold] = meshgrid(xpold, ypold);
@@ -420,7 +422,12 @@ for ar = 1:length(objects)
     
     fracture=~mod(layerNum(ar),2);
     
-    if fracture              
+    nPolys2Frac=sum(~mod(layerNum,2));
+        
+    if fracture
+        
+        fracCount=fracCount+1;
+        fprintf('Fracturing polygon %d of %d \n',fracCount,nPolys2Frac);
         %First figure out the variation in dose across the polygon
         maxDose=max(shotMap(:));
         minDose=min(shotMap(:));
@@ -481,16 +488,20 @@ for ar = 1:length(objects)
             nPolys=1;
             iter=0;
             while ~allGood
-               %Show the fracturing status. Also check for empty polygons
-               %and zero-area polygons. 
-               %figure(777); clf; hold on; 
+                %Show the fracturing status. Also check for empty polygons
+                %and zero-area polygons.
+                if fracDebug
+                    figure(777); clf; hold on;
+                end
                 for j=(length(poly):-1:1)
                     if isempty(poly(j).x)
                         poly(j)=[];
                     elseif polyarea(poly(j).x,poly(j).y)==0
                         poly(j)=[];
                     else
-                        %plot(poly(j).x,poly(j).y,'Color',ctab{poly(j).dose}./255);
+                        if fracDebug
+                            plot(poly(j).x,poly(j).y,'Color',ctab{poly(j).dose}./255);
+                        end
                     end
                 end
                 %drawnow;
@@ -518,8 +529,8 @@ for ar = 1:length(objects)
                         xdiff=max(xline)-min(xline);
                         ydiff=max(yline)-min(yline);
                         
-                        shouldFracX=(xdiff>dDose/2);
-                        shouldFracY=(ydiff>dDose/2);
+                        shouldFracX=(xdiff>dDose/(2+iter*.5));
+                        shouldFracY=(ydiff>dDose/(2+iter*.5));
                         canFracX=(poly(i).sizeX/fracNum>minSize);
                         canFracY=(poly(i).sizeY/fracNum>minSize);
                         
