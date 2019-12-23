@@ -76,7 +76,6 @@ config=def(config,'psfFile',[]);
 ctab={[0 0 175] [0 0 255] [0 63 255] [0 127 255] [0 191 255] [15 255 239] [79 255 175] [143 255 111] [207 255 047] [255 223 0] [255 159 0] [255 095 0] [255 31 0] [207 0 0] [143 0 0] };
 
 dx = config.dx;
-subfieldSize=config.subfieldSize;
 
 fprintf('urpec is running...\n');
 
