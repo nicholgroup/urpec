@@ -53,7 +53,8 @@ function [  ] = urpec_v3( config )
 % v3: 
 %   writes all doses to the same layer but with different colors. 
 %   PSF improvements
-%   Entirely new fracturing algorithm
+%   
+% improvements and fracturing algorithm rewritten. 
 %
 
 tic
@@ -67,15 +68,18 @@ end
 config = def(config,'dx',.01);   %Grid spacing in microns. This is now affected by config.targetPoints.
 config = def(config,'targetPoints',50e6);  %Target number of points for the simulation. 50e6 takes about 10 min to complete.
 config = def(config,'autoRes',true);  %auto adjust the resolution
+config = def(config,'subfieldSize',50);  %subfield size in microns
 config = def(config,'maxIter',6);  %max number of iterations for the deconvolution
-config = def(config,'dvals',linspace(1,2.0,15));  %doses corresponding to output layers, in units of dose to clear
+config = def(config,'dvals',linspace(1,2.4,15));  %doses corresponding to output layers, in units of dose to clear
 config=def(config,'file',[]); 
 config=def(config,'psfFile',[]);
 
-%used below. These jet-like colors are compatible with NPGS.
+%used below.
 ctab={[0 0 175] [0 0 255] [0 63 255] [0 127 255] [0 191 255] [15 255 239] [79 255 175] [143 255 111] [207 255 047] [255 223 0] [255 159 0] [255 095 0] [255 31 0] [207 0 0] [143 0 0] };
 
+
 dx = config.dx;
+subfieldSize=config.subfieldSize;
 
 fprintf('urpec is running...\n');
 
@@ -391,8 +395,6 @@ dvalsAct=[];
 
 fprintf('Fracturing...\n');
 fracCount=0;
-notFracCount=0;
-
 fracDebug=0;
 
 subField=struct();
@@ -419,9 +421,6 @@ for ar = 1:length(objects)
     fracture=~mod(layerNum(ar),2);
     
     nPolys2Frac=sum(~mod(layerNum,2));
-    
-    nPolysNot2Frac=sum(mod(layerNum,2));
-
         
     if fracture
         
@@ -548,7 +547,7 @@ for ar = 1:length(objects)
                             end
                         end
                         
-                        %If after all this we didn't actually fracture anything,
+                        %If after all this we didn't actually fracture,
                         %then skip and move on.
                         if length(polys2Add)==1
                             polys2Add={};
@@ -621,10 +620,6 @@ for ar = 1:length(objects)
         dvalsAct=dvals;
         
     else %no fracturing
-        
-        notFracCount=notFracCount+1;
-        fprintf('Averaging polygon %d of %d \n',notFracCount,nPolysNot2Frac);
-        
         subField(ar).poly(1).x=p(:,1);
         subField(ar).poly(1).y=p(:,2);
         [mv,ind]=min(abs(dvals-squeeze(nanmean(shotMap(:)))));
@@ -648,7 +643,9 @@ fprintf('Exporting to %s...\n',outputFileName);
 fields(j).cadFile=[filename(1:end-4) '_' descr '_' num2str(j) '.dc2'];
 
 FID = dxf_open(outputFileName);
-        
+    
+ctab={[0 0 175] [0 0 255] [0 63 255] [0 127 255] [0 191 255] [15 255 239] [79 255 175] [143 255 111] [207 255 047] [255 223 0] [255 159 0] [255 095 0] [255 31 0] [207 0 0] [143 0 0] };
+    
 polygons=struct();
 polygons(1)=[];
 
@@ -678,8 +675,6 @@ end
 
 dxf_close(FID);
 
-fprintf('Exporting to %s...\n',dc2FileName);
-
 dc2write(polygons,dc2FileName);
 
 %Save doses here
@@ -694,6 +689,8 @@ fields(j).doseFile=[filename(1:end-4) '_' descr '_' num2str(j) '.txt'];
 fields(j).dvalsAct=dvalsAct;
 fields(j).polygons=polygons;
 fprintf('Finished exporting.\n');
+    
+
 
 fieldsFileName=[pathname filename(1:end-4) '_' descr '_fields.mat'];
 save(fieldsFileName,'fields');

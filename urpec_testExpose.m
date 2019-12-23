@@ -276,7 +276,12 @@ psf=zeros(round(psfRange./dx));
 xpsf=xpsf.*dx;
 ypsf=ypsf.*dx;
 rpsf2=xpsf.^2+ypsf.^2;
-psf=1/(1+eta).*(1/(pi*alpha^2).*exp(-rpsf2./alpha.^2)+eta/(pi*beta^2).*exp(-rpsf2./beta.^2));
+psfForward=1/(1+eta).*(1/(pi*alpha^2).*exp(-rpsf2./alpha.^2));
+psfBackscatter=1/(1+eta).*(eta/(pi*beta^2).*exp(-rpsf2./beta.^2));
+%psfTot=1/(1+eta).*(1/(pi*alpha^2).*exp(-rpsf2./alpha.^2)+eta/(pi*beta^2).*exp(-rpsf2./beta.^2));
+%Now force the ratio of the forward and backscattered parts to be the
+%correct.
+psf=psfForward./sum(psfForward(:))+eta*psfBackscatter./sum(psfBackscatter(:));
 
 %Zero pad to at least 10um x 10 um;
 %pad in the x direction
