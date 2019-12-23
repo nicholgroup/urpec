@@ -27,7 +27,7 @@ text(xlen/2-textLen/2,ylen/2,str,'FontSize',50,'Interpreter','none');
 %caxis([0 1]); 
 %set(gcf,'color','white','units','normalized','position',[.1 .1 .8 .8])
 
-tim = getframe(1111);
+tim = getframe(gca);
 tim2 = tim.cdata;
 tmask = tim2<255;
 
@@ -276,7 +276,6 @@ for i=1:length(BB)
 end
 
 
-targetLen=100;
 figure(1111); clf; hold on;
 for i=1:length(BB)
     b=BB{i};

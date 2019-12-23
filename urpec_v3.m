@@ -68,7 +68,7 @@ config = def(config,'dx',.01);   %Grid spacing in microns. This is now affected 
 config = def(config,'targetPoints',50e6);  %Target number of points for the simulation. 50e6 takes about 10 min to complete.
 config = def(config,'autoRes',true);  %auto adjust the resolution
 config = def(config,'maxIter',6);  %max number of iterations for the deconvolution
-config = def(config,'dvals',linspace(1,2.4,15));  %doses corresponding to output layers, in units of dose to clear
+config = def(config,'dvals',linspace(1,2.0,15));  %doses corresponding to output layers, in units of dose to clear
 config=def(config,'file',[]); 
 config=def(config,'psfFile',[]);
 
@@ -391,6 +391,8 @@ dvalsAct=[];
 
 fprintf('Fracturing...\n');
 fracCount=0;
+notFracCount=0;
+
 fracDebug=0;
 
 subField=struct();
@@ -417,6 +419,9 @@ for ar = 1:length(objects)
     fracture=~mod(layerNum(ar),2);
     
     nPolys2Frac=sum(~mod(layerNum,2));
+    
+    nPolysNot2Frac=sum(mod(layerNum,2));
+
         
     if fracture
         
@@ -616,6 +621,10 @@ for ar = 1:length(objects)
         dvalsAct=dvals;
         
     else %no fracturing
+        
+        notFracCount=notFracCount+1;
+        fprintf('Averaging polygon %d of %d \n',notFracCount,nPolysNot2Frac);
+        
         subField(ar).poly(1).x=p(:,1);
         subField(ar).poly(1).y=p(:,2);
         [mv,ind]=min(abs(dvals-squeeze(nanmean(shotMap(:)))));
@@ -669,7 +678,7 @@ end
 
 dxf_close(FID);
 
-fprintf('Exporting to %s...\n',dceFileName);
+fprintf('Exporting to %s...\n',dc2FileName);
 
 dc2write(polygons,dc2FileName);
 
