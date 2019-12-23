@@ -544,7 +544,7 @@ for ar = 1:length(objects)
                             end
                         end
                         
-                        %If after all this we didn't actually fracture,
+                        %If after all this we didn't actually fracture anything,
                         %then skip and move on.
                         if length(polys2Add)==1
                             polys2Add={};
@@ -640,9 +640,7 @@ fprintf('Exporting to %s...\n',outputFileName);
 fields(j).cadFile=[filename(1:end-4) '_' descr '_' num2str(j) '.dc2'];
 
 FID = dxf_open(outputFileName);
-    
-ctab={[0 0 175] [0 0 255] [0 63 255] [0 127 255] [0 191 255] [15 255 239] [79 255 175] [143 255 111] [207 255 047] [255 223 0] [255 159 0] [255 095 0] [255 31 0] [207 0 0] [143 0 0] };
-    
+        
 polygons=struct();
 polygons(1)=[];
 
@@ -672,6 +670,8 @@ end
 
 dxf_close(FID);
 
+fprintf('Exporting to %s...\n',dceFileName);
+
 dc2write(polygons,dc2FileName);
 
 %Save doses here
@@ -686,8 +686,6 @@ fields(j).doseFile=[filename(1:end-4) '_' descr '_' num2str(j) '.txt'];
 fields(j).dvalsAct=dvalsAct;
 fields(j).polygons=polygons;
 fprintf('Finished exporting.\n');
-    
-
 
 fieldsFileName=[pathname filename(1:end-4) '_' descr '_fields.mat'];
 save(fieldsFileName,'fields');
