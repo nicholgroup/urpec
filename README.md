@@ -1,7 +1,11 @@
 # urpec
 urpec is a matlab-based proximity-effect-correction function for electron beam lithography.
 
-urpec generates a proximity-effect-corrected .dxf file for electron beam lithography. The corrected file is created by deconvolving a point spread function from an input .dxf pattern file. The output file has different layers, each of which should receive a different dose. This function assumes that one unit in the input pattern file is one micron. urpec will recognize all closed polylines in all layers.
+urpec generates a proximity-effect-corrected .dxf file for electron beam lithography. The corrected file is created by deconvolving a point spread function from an input .dxf pattern file. The output file has different colors, each of which receive a different dose. This function assumes that one unit in the input pattern file is one micron. urpec will recognize all closed polylines in all layers. 
+
+Versions 1 and 2 will automatically fracture all polygons. 
+
+Version three can either assign an average dose to each polygon, or it can fracture each polygon into smaller polygons for higher resolution exposures. The fracturing algorithm in version 3 uses "nicer" shapes.
 
 Right now this is intended for use with NPGS.
 
