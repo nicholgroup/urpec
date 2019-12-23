@@ -2,23 +2,18 @@ function [  ] = urpec_v3( config )
 % function [  ] = urpec_v3( config )
 % Generates a proximity-effect-corrected .dxf file for electron beam lithography.
 % The corrected file is created by deconvolving a point spread function from an input .dxf pattern file.
-% The output file has different layers, each of which should receive a different dose.
-% This function assumes that one unit in the input pattern file is one
+% The output file has different colors, each of which recieve a different
+% dose. This function assumes that one unit in the input pattern file is one
 % micron.
-%
-% Patterns are output in the same layer in which they were input. The dose
-% is modulated according to the color.
-%
-% Right now this is intended for use with NPGS.
-%
-% The default is to create a new file with the same polygons, but with
-% different colors. The color of the polygon indicates the dose. 
 %
 % The layer scheme is as follows. Layers 1 and 2 of the input file will
 % both be output to layer 1 of the output file. Layer 1 will not be
 % fractured, and layer 2 will be fractured. Layers 3 and 4 of the input
 % file will be output to layer 2 of the output filed, etc. If the polygons
 % are not fractured, the are written with an average dose. 
+%
+% Right now this is intended for use with NPGS.
+%
 %
 % config is an optional struct with the following optional fields:
 %
@@ -55,8 +50,10 @@ function [  ] = urpec_v3( config )
 %
 % Version history
 % v2: handles different write fields and writes directly to dc2 format.
-% v3: writes all doses to the same layer but with different colors. PSF
-% improvements and fracturing algorithm rewritten. 
+% v3: 
+%   writes all doses to the same layer but with different colors. 
+%   PSF improvements
+%   Entirely new fracturing algorithm
 %
 
 tic
@@ -70,15 +67,13 @@ end
 config = def(config,'dx',.01);   %Grid spacing in microns. This is now affected by config.targetPoints.
 config = def(config,'targetPoints',50e6);  %Target number of points for the simulation. 50e6 takes about 10 min to complete.
 config = def(config,'autoRes',true);  %auto adjust the resolution
-config = def(config,'subfieldSize',50);  %subfield size in microns
 config = def(config,'maxIter',6);  %max number of iterations for the deconvolution
 config = def(config,'dvals',linspace(1,2.4,15));  %doses corresponding to output layers, in units of dose to clear
 config=def(config,'file',[]); 
 config=def(config,'psfFile',[]);
 
-%used below.
+%used below. These jet-like colors are compatible with NPGS.
 ctab={[0 0 175] [0 0 255] [0 63 255] [0 127 255] [0 191 255] [15 255 239] [79 255 175] [143 255 111] [207 255 047] [255 223 0] [255 159 0] [255 095 0] [255 31 0] [207 0 0] [143 0 0] };
-
 
 dx = config.dx;
 subfieldSize=config.subfieldSize;

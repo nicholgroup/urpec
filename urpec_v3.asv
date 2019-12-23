@@ -2,23 +2,18 @@ function [  ] = urpec_v3( config )
 % function [  ] = urpec_v3( config )
 % Generates a proximity-effect-corrected .dxf file for electron beam lithography.
 % The corrected file is created by deconvolving a point spread function from an input .dxf pattern file.
-% The output file has different layers, each of which should receive a different dose.
-% This function assumes that one unit in the input pattern file is one
+% The output file has different colors, each of which recieve a different
+% dose. This function assumes that one unit in the input pattern file is one
 % micron.
-%
-% Patterns are output in the same layer in which they were input. The dose
-% is modulated according to the color.
-%
-% Right now this is intended for use with NPGS.
-%
-% The default is to create a new file with the same polygons, but with
-% different colors. The color of the polygon indicates the dose. 
 %
 % The layer scheme is as follows. Layers 1 and 2 of the input file will
 % both be output to layer 1 of the output file. Layer 1 will not be
 % fractured, and layer 2 will be fractured. Layers 3 and 4 of the input
 % file will be output to layer 2 of the output filed, etc. If the polygons
 % are not fractured, the are written with an average dose. 
+%
+% Right now this is intended for use with NPGS.
+%
 %
 % config is an optional struct with the following optional fields:
 %
@@ -55,7 +50,10 @@ function [  ] = urpec_v3( config )
 %
 % Version history
 % v2: handles different write fields and writes directly to dc2 format.
-% v3: writes all doses to the same layer but with different colors. PSF
+% v3: 
+%   writes all doses to the same layer but with different colors. 
+%   PSF improvements
+%   
 % improvements and fracturing algorithm rewritten. 
 %
 
@@ -395,7 +393,9 @@ dvalsAct=[];
 % d.dvals=dvals;
 % %save('fractureData','d');
 
-fprintf('Fracturing...\n')
+fprintf('Fracturing...\n');
+fracCount=0;
+fracDebug=0;
 
 subField=struct();
 [XPold, YPold] = meshgrid(xpold, ypold);
@@ -420,7 +420,12 @@ for ar = 1:length(objects)
     
     fracture=~mod(layerNum(ar),2);
     
-    if fracture              
+    nPolys2Frac=sum(~mod(layerNum,2));
+        
+    if fracture
+        
+        fracCount=fracCount+1;
+        fprintf('Fracturing polygon %d of %d \n',fracCount,nPolys2Frac);
         %First figure out the variation in dose across the polygon
         maxDose=max(shotMap(:));
         minDose=min(shotMap(:));
@@ -454,8 +459,8 @@ for ar = 1:length(objects)
         XPnew=XPold(yinds,xinds)+dx/2; xpnew=xpold(xinds)+dx/2;
         YPnew=YPold(yinds,xinds)+dy/2; ypnew=ypold(yinds)+dy/2;
         
-        figure(556); clf; imagesc(xpnew,ypnew,shotMapNew);
-        hold on; plot(p(:,1),p(:,2));
+%         figure(556); clf; imagesc(xpnew,ypnew,shotMapNew);
+%         hold on; plot(p(:,1),p(:,2));
         
         minSize=config.dx*4; %Smallest eventual polygon size
         fracNum=3; %number of times to fracture each polygon each iteration.
@@ -481,16 +486,20 @@ for ar = 1:length(objects)
             nPolys=1;
             iter=0;
             while ~allGood
-               %Show the fracturing status. Also check for empty polygons
-               %and zero-area polygons. 
-               %figure(777); clf; hold on; 
+                %Show the fracturing status. Also check for empty polygons
+                %and zero-area polygons.
+                if fracDebug
+                    figure(777); clf; hold on;
+                end
                 for j=(length(poly):-1:1)
                     if isempty(poly(j).x)
                         poly(j)=[];
                     elseif polyarea(poly(j).x,poly(j).y)==0
                         poly(j)=[];
                     else
-                        %plot(poly(j).x,poly(j).y,'Color',ctab{poly(j).dose}./255);
+                        if fracDebug
+                            plot(poly(j).x,poly(j).y,'Color',ctab{poly(j).dose}./255);
+                        end
                     end
                 end
                 %drawnow;
@@ -507,8 +516,8 @@ for ar = 1:length(objects)
                         maxY=max(poly(i).y);
                         minX=min(poly(i).x);
                         minY=min(poly(i).y);                        
-                        xinds=round([(minX-xpold(1))/dx+1:(maxX-xpold(1))/dx+1]);
-                        yinds=round([(minY-ypold(1))/dy+1:(maxY-ypold(1))/dy+1]);                                                
+                        xinds=round([(minX-xpold(1))/dx+1:(maxX-xpold(1))/dx]);
+                        yinds=round([(minY-ypold(1))/dy+1:(maxY-ypold(1))/dy]);                                                
                         shotMapNew=shotMap(yinds,xinds);
                         XPnew=XPold(yinds,xinds)+dx/2; xpnew=xpold(xinds)+dx/2;
                         YPnew=YPold(yinds,xinds)+dy/2; ypnew=ypold(yinds)+dy/2;
@@ -518,8 +527,8 @@ for ar = 1:length(objects)
                         xdiff=max(xline)-min(xline);
                         ydiff=max(yline)-min(yline);
                         
-                        shouldFracX=(xdiff>dDose/2);
-                        shouldFracY=(ydiff>dDose/2);
+                        shouldFracX=(xdiff>dDose/(2+iter*.5));
+                        shouldFracY=(ydiff>dDose/(2+iter*.5));
                         canFracX=(poly(i).sizeX/fracNum>minSize);
                         canFracY=(poly(i).sizeY/fracNum>minSize);
                         
@@ -533,7 +542,7 @@ for ar = 1:length(objects)
                         
                         %Check for empty polys and get rid of them
                         for j=(length(polys2Add):-1:1)
-                            if isempty(polys2Add{j})
+                            if isempty(polys2Add{j}) || any(size(polys2Add{j}.x)~=size(polys2Add{j}.y))
                                 polys2Add(j)=[];
                             end
                         end
@@ -550,11 +559,7 @@ for ar = 1:length(objects)
                         for j=1:length(polys2Add)
                             %plot(polys2Add{j}.x,polys2Add{j}.y)
                             %Close the polys.
-                            b=[ polys2Add{j}.x'; polys2Add{j}.y'];
-                            b=simplify_polygon(b);
-                            poly(j).x=b()
-                            poly(j)=simplify_polygon([poly(j).x poly(j).y])
-                            
+                           
                             polys2Add{j}.x= [polys2Add{j}.x polys2Add{j}.x(1)];
                             polys2Add{j}.y= [polys2Add{j}.y polys2Add{j}.y(1)];
                             polys2Add{j}.x= polys2Add{j}.x';

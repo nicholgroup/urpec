@@ -17,20 +17,25 @@ function [BB] = patternText(str,targetLen,cntr)
 textLen=30/9*length(str); %empirical scaling for this font size
 xlen=2*textLen+40;
 ylen=100;
-figure(1111); clf;
+figure(1111); clf; colormap gray;
 set(gcf,'color','white','units','normalized','position',[.1 .1 .8 .8])
-imagesc((1:xlen),(1:ylen),zeros(100,100));
-text(xlen/2-textLen/2,ylen/2,str,'FontSize',50,'Interpreter','none');
+imagesc((1:xlen),(1:ylen),ones(100,100));
+caxis([0 1]);
+set(gca,'visible','off')
 
-tim = getframe(gca);
+text(xlen/2-textLen/2,ylen/2,str,'FontSize',50,'Interpreter','none');
+%caxis([0 1]); 
+%set(gcf,'color','white','units','normalized','position',[.1 .1 .8 .8])
+
+tim = getframe(1111);
 tim2 = tim.cdata;
-tmask = tim2>0;
+tmask = tim2<255;
 
 tmask=tmask(:,:,1);
 
 %The code below is borrowed from urpec. To make this easy, lets just rename
 %some variables to make the code compatible.
-doseNew=~tmask;
+doseNew=tmask;
 
 close(1111);
 
