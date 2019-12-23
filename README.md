@@ -5,7 +5,7 @@ urpec generates a proximity-effect-corrected .dxf file for electron beam lithogr
 
 Versions 1 and 2 will automatically fracture all polygons. 
 
-Version three can either assign an average dose to each polygon, or it can fracture each polygon into smaller polygons for higher resolution exposures. The fracturing algorithm in version 3 uses "nicer" shapes.
+Version 3 can either assign an average dose to each polygon, or it can fracture each polygon into smaller polygons for higher resolution exposures. The fracturing algorithm in version 3 uses "nicer" shapes.
 
 Right now this is intended for use with NPGS.
 
@@ -42,8 +42,13 @@ urpec is written by Adina Ripin, Elliot Connors, and John Nichol.
 
 Version history
 
-v2: 7/23/2019. Added capability for different write fields and writing directly to dc2 file.
-v3: 12/18/2019. Fixed bug associated with fftshift. Now all patterns are written to the same layer in different colors. This enables control of the write order.
+v2: 7/23/2019. 
+  Added capability for different write fields and writing directly to dc2 file.
+v3: 12/18/2019. 
+  Fixed bug associated with fftshift. 
+  Writes all doses to the same layer but with different colors. 
+  PSF improvements.
+  Entirely new fracturing algorithm
 
 
 
