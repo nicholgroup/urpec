@@ -426,7 +426,7 @@ for ar = 1:length(objects)
     if fracture
         
         fracCount=fracCount+1;
-        fprintf('Fracturing polygon %d of %d \n',fracCount,nPolys2Frac);
+        fprintf('Fracturing polygon %d, %d of %d \n',ar,fracCount,nPolys2Frac);
         %First figure out the variation in dose across the polygon
         maxDose=max(shotMap(:));
         minDose=min(shotMap(:));
@@ -472,7 +472,7 @@ for ar = 1:length(objects)
             [mv,ind]=min(abs(dvals-squeeze(nanmean(shotMap(:)))));
             d=i; %dose color
             subField(ar).poly(1).dose=ind;
-            subField(ar).poly(1).layer=layerNum(ar);
+            subField(ar).poly(1).layer=ceil(layerNum(ar)/2);
         else %Need to fracture. In the future, this should be made into a function if increased complexity is desired.        
             poly=struct;
             poly(1).x=p(:,1);
@@ -623,7 +623,7 @@ for ar = 1:length(objects)
     else %no fracturing
         
         notFracCount=notFracCount+1;
-        fprintf('Averaging polygon %d of %d \n',notFracCount,nPolysNot2Frac);
+        fprintf('Averaging polygon %d, %d of %d \n',ar,notFracCount,nPolysNot2Frac);
         
         subField(ar).poly(1).x=p(:,1);
         subField(ar).poly(1).y=p(:,2);

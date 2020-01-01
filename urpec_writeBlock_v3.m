@@ -12,7 +12,7 @@ cd(config(1).dir)
 
 switch config.aperture
     case 30
-        current = '445.0';
+        current = '438.0';
         aperture = '1';
         
     case 7.5
@@ -28,7 +28,7 @@ switch config.aperture
         aperture = '4';
         
     case 60
-        current = '1400';
+        current = '1450';
         aperture = '5';
         
     case 120
