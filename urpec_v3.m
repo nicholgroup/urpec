@@ -630,6 +630,9 @@ for ar = 1:length(objects)
         [mv,ind]=min(abs(dvals-squeeze(nanmean(shotMap(:)))));
         subField(ar).poly(1).dose=ind;
         subField(ar).poly(1).layer=ceil(layerNum(ar)/2);
+        
+        dvalsAct=dvals;
+        
     end
 
 end
