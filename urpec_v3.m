@@ -1,7 +1,11 @@
 function [  ] = urpec_v3( config )
 % function [  ] = urpec_v3( config )
-% Generates a proximity-effect-corrected .dxf file for electron beam lithography.
-% The corrected file is created by deconvolving a point spread function from an input .dxf pattern file.
+% Generates a proximity-effect-corrected .dxf file for electron beam 
+% lithography.
+% 
+% The corrected file is created by deconvolving a point spread function 
+% from an input .dxf or .mat pattern file.
+% 
 % The output file has different colors, each of which recieve a different
 % dose. This function assumes that one unit in the input pattern file is one
 % micron.
@@ -25,7 +29,7 @@ function [  ] = urpec_v3( config )
 %   6.
 %
 %   dvals: doses corresponding to the layers in the output file. Default is
-%   1, 1.1, 2.5 in units of the dose to clear.
+%   1, 1.1, 2.0 in units of the dose to clear.
 %   
 %   targetPoints: approximate number of points for the simulation. Default
 %   is 50e6.
@@ -33,7 +37,13 @@ function [  ] = urpec_v3( config )
 %   autoRes: enables auto adjustment of the resolution for ~10min
 %   computation time
 %
-%   file: datafile for processing
+%   file: datafile for processing. This can either be a .dxf file or a .mat
+%   file. If it is a .mat file, the contets of the file should be a struct
+%   called polygons. The polygons struct should have at least these fields:
+%       p: a cell array of polygons. Each element of the cell array should
+%       be a nx2 array of coordinates describing the poylgon.
+%       layer: an array of numbers specifying the layer of each polygon
+%       according to the convention described above.
 %
 %   psfFile: point-spread function file
 %
@@ -81,19 +91,30 @@ fprintf('urpec is running...\n');
 
 if isempty(config.file)
     %choose and load file
-    fprintf('Select your dxf file.\n')
-    [filename pathname]=uigetfile('*.dxf');
+    fprintf('Select your cad file.\n')
+    [filename, pathname,ext]=fileparts(uigetfile({'*.dxf','*.mat'}));
 else
     [pathname,filename,ext] = fileparts(config.file);
     pathname=[pathname '\'];
     filename=[filename ext];
 end
 
-[lwpolylines,lwpolylayers]=dxf2coord_20(pathname,filename);
-%For later use in breaking into fields
-layerNum=str2num(cell2mat(lwpolylayers));
+if strmatch(ext,'.dxf')
+    [lwpolylines,lwpolylayers]=dxf2coord_20(pathname,filename);
+    %For later use in breaking into fields
+    layerNum=str2num(cell2mat(lwpolylayers));
+end
 
-fprintf('dxf CAD file imported.\n')
+if strmatch(ext,'.mat')
+    d=load([pathname filename]);
+    layerNum=[d.polygons.layer];
+    lwpolylines=[ones(size(d.polygons(1).p,1),1).*1 d.polygons(1).p];
+    for i=2:length(d.polygons)
+        lwpolylines=[lwpolylines; [ones(size(d.polygons(i).p,1),1).*i d.polygons(i).p]];
+    end
+end
+
+fprintf('CAD file imported.\n')
 
 %splitting each set of points into its own object
 object_num=max(lwpolylines(:,1)); % number of polygons in CAD file
@@ -147,7 +168,6 @@ x = minX:dx:maxX;
 y = minY:dx:maxY;
 [X,Y] = meshgrid(x, y);
 [m,n] = size(X);
-
 
 fprintf(['Creating 2D binary grid spanning medium feature write field (spacing = ', num2str(dx), '). This can take a few minutes...\n']);
 %polygon distribution - creating binary grid of x,y points that are 1 if
