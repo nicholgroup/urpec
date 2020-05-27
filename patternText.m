@@ -1,5 +1,5 @@
 function [BB] = patternText(str,targetLen,cntr)
-%[BB] = patternText(str,targetLen)
+%[BB] = patternText(str,targetLen,cntr)
 % Outputs a cell array of polygons corresponding to the text. targetLen is
 % the target text legnth. This is useful for generating text patters for
 % lithography pattern files. The basic idea is to make a graph with text,
@@ -27,7 +27,7 @@ text(xlen/2-textLen/2,ylen/2,str,'FontSize',50,'Interpreter','none');
 %caxis([0 1]); 
 %set(gcf,'color','white','units','normalized','position',[.1 .1 .8 .8])
 
-tim = getframe(gca);
+tim = getframe(1111);
 tim2 = tim.cdata;
 tmask = tim2<255;
 
@@ -276,6 +276,8 @@ for i=1:length(BB)
 end
 
 
+
+%targetLen=100;
 figure(1111); clf; hold on;
 for i=1:length(BB)
     b=BB{i};
