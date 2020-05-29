@@ -33,8 +33,12 @@ switch config.aperture
         
     case 120
         current = '6000';
-        aperture = '6';
-        
+        aperture = '6';       
+end
+
+%use the current specified in the input configuration
+if ~isempty(config.current)
+    current=num2str(config.current);
 end
 
 % select dose file
@@ -76,11 +80,16 @@ nextnum = 2; %layer numbering starts at 2 and goes up with patterns created with
 % basic format for each pair of lines is 
 % level #, layer #, mode, move, max mag, mag, spacing, spacing, aperture,
 % current, color, dwell time, dose, ?
+A=str2num(config.spacing{1})*str2num(config.spacing{2})*1e-20*1e4;
+
 strline1 = ['lev_1 ' num2str(nextnum) ' w    0,0    1500    ' config.mag '    ' config.spacing{1} '    ' config.spacing{2} '    ' aperture '     ' current];
 tot_str_s = strline1;
 for i=1:length(ctab)
+    dt=A*sdose(i)*1e-6/(str2num(current)*1e-12)*1e6; %autocompute dwell time.
     cnum=sprintf('%03d',i);
-    strline2 = ['col -' cnum ' ' char(scol{i}) ' 10.5239 ' num2str(sdose(i)) ' 0'];
+    %strline2 = ['col -' cnum ' ' char(scol{i}) ' 10.5239 ' num2str(sdose(i)) ' 0'];
+    strline2 = ['col -' cnum ' ' char(scol{i}) ' ' num2str(dt) ' ' num2str(sdose(i)) ' 0'];
+
     tot_str_s=sprintf('%s\r\n%s',tot_str_s,strline2);
 end
 
