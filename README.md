@@ -1,18 +1,19 @@
 # urpec
 urpec is a matlab-based proximity-effect-correction function for electron beam lithography.
 
-urpec generates a proximity-effect-corrected .dxf file for electron beam lithography. The corrected file is created by deconvolving a point spread function from an input .dxf pattern file. The output file has different colors, each of which receive a different dose. This function assumes that one unit in the input pattern file is one micron. urpec will recognize all closed polylines in all layers. 
+urpec generates a proximity-effect-corrected pattern file for electron beam lithography. The corrected file is created by deconvolving a point spread function from an input .dxf or .mat pattern file. The output file has different colors, each of which receive a different dose. This function assumes that one unit in the input pattern file is one micron. urpec will recognize all closed polylines in all layers. 
 
 Versions 1 and 2 will automatically fracture all polygons. 
 
 Version 3 can either assign an average dose to each polygon, or it can fracture each polygon into smaller polygons for higher resolution exposures. The fracturing algorithm in version 3 uses "nicer" shapes.
 
-Right now this is intended for use with NPGS.
+Right now this is intended for use with NPGS, and urpec automatically outputs a .dc2 file suitable for NPGS.
 
 To run urpec, download all files to a folder. Set you matlab path to this folder and run urpec, optionally with arguments. See the documentation inside urpec for calling urpec with arguments. You can also run it from a script. This is useful for batch processing. See the script called run_urpec.
 
 Current PSFs available are 
-- GaAs, 30 kV, 200nm PMMA
+- GaAs, 30 kV, 200 nm PMMA
+- GaAs, 30 kV, 350 nm PMMA
 - GaAs, 30 kV, 400 nm PMMA
 - GaAs, 30 kV, 510 nm PMMA
 - Si, 30 kV, 200 nm PMMA
@@ -24,9 +25,9 @@ If you need a different PSF, you should download Casino, run a simulation, save 
 Casino can be found here:
 http://www.gel.usherbrooke.ca/casino/What.html
 
-An example Casino simulation is included in the "Examples" directory. Open this file in Casino, modify your sample and microscope as necessary, and run the simulation. It should already have the necessary settings enabled, but you need to change the number of electrons. Go to Setting>Set Up Microscope, and change the number of electrons to 2000. Also go to Settings>Run Time Options, and change the number of displayed trajectories fo 2000. To change the sample go to Settings>Modify Sample, and change the sample as needed. Note that the top layer of your sample should be called PMMA in order for the analysis function to work. When the simulation has finished, save the data. Then open the file in excel, and resave as a .xlsx file. The resulting .xlsx file is compatible with the function casinoPSF, which extracts point spread function data.
+An example Casino simulation is included in the "Examples" directory. Open this file in Casino, modify your sample and microscope as necessary, and run the simulation. It should already have the necessary settings enabled, but you need to change the number of electrons. Go to Setting>Set Up Microscope, and change the number of electrons to 2000. Also go to Settings>Run Time Options, and change the number of displayed trajectories fo 2000. To change the sample go to Settings>Modify Sample, and change the sample as needed. Note that the top layer of your sample should be called PMMA in order for the analysis function to work. When the simulation has finished, export the data. Then open the file in excel, and resave as a .xlsx file. The resulting .xlsx file is compatible with the function casinoPSF, which extracts point spread function data.
 
-There are currently two ways to generate NPGS run files with urpec. urpec_writeJob uses an existing run file template to create a run file. This works well if you are making minor tweaks or want to do a simple write. urpec_makeRunFile creates a new run file. See the script run_urpec for examples on how to make run files using both approaches.
+See the script run_urpec for examples on how to run urpec and how to make run files.
 
 dxflib is (c) Grzegorz Kwiatek. 
 It is distributed here for the sake of completeness. It can be found here:

@@ -1,4 +1,4 @@
-function [ s ] = writeBlock( config )
+function [ s ] = writeBlock_v3( config )
 %[ s ] = writeBlock( config )
 %   Generates text for an NPGS run file for pattern writing.
 %
@@ -6,6 +6,10 @@ function [ s ] = writeBlock( config )
 % v2: doesn't exist
 % v3: belongs with urpec_v3. Assumes that all patterns are in the same
 % layer but with different colors.
+%
+% TODO: right now this only handles patterns in layer 2. Layers should be a
+% field in entities.
+
 curDir=pwd;
 
 cd(config(1).dir)
@@ -80,6 +84,9 @@ nextnum = 2; %layer numbering starts at 2 and goes up with patterns created with
 % basic format for each pair of lines is 
 % level #, layer #, mode, move, max mag, mag, spacing, spacing, aperture,
 % current, color, dwell time, dose, ?
+
+%calculate the area per pixel for later use in automatically setting the
+%right dwell time.
 A=str2num(config.spacing{1})*str2num(config.spacing{2})*1e-20*1e4;
 
 strline1 = ['lev_1 ' num2str(nextnum) ' w    0,0    1500    ' config.mag '    ' config.spacing{1} '    ' config.spacing{2} '    ' aperture '     ' current];

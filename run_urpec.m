@@ -1,3 +1,115 @@
+%% Choose pattern file and psf file
+% This works best if your pattern file is already in the
+% NPGS directory.
+
+[filenameP pathnameP]=uigetfile('*.*','Select pattern file.');
+
+[psf ]=uigetfile('*.*','Select PSF file.');
+
+%% Run urpec with default settings
+
+urpec_v3(struct('file',[pathnameP filenameP],...
+    'psfFile',psf));
+
+%% Run urpec with advanced settings
+% Here you can specify different parameters.
+urpec_v3(struct('file',[pathnameP filenameP],...
+    'autoRes',false,...
+    'dx',.005,...
+    'dvals',linspace(1,2.0,15),...
+    'maxIter',6,...
+    'fracNum',4,...
+    'fracSize',2,...
+    'psfFile',psf));
+
+%% Make a run file
+% Before you run this cell, make sure the field files ('...fields.mat'), dose files ('.txt'), 
+% and the pattern files ('.dc2') are in the proper NPGS directory. 
+
+%Magnification
+mag=1500;
+
+%aperture
+ap=10; %can be 7,10,30,120
+
+%input the current for the aperture.
+current=40;
+
+%dose
+dtc=[400];
+
+%L-L and C-C spacing, in Angstroms.
+spacing=[50.743];
+
+%Initial move
+moves={[300,300]};
+
+%pattern files
+[filename pathname]=uigetfile('*fields.mat');
+files1={filename};
+
+dir=pwd;
+cd(pathname);
+
+% Create the structure of the run file here. 
+entities=[];
+entities.val={};
+
+entities(1).type='header';
+entities(1).val={};
+entities(1).dir=pathname;
+
+entities(2).type='magComment';
+entities(2).val={mag};
+
+pos=[0 0];
+
+%You can provide array or structs for most of the parameters above, and you
+%can define a run file that is many entities long.
+for i=1:length(files1)
+    
+    d=load(files1{i});
+    fields=d.fields;
+    
+    startInd=2+(i-1)*3+1;
+    
+    entities(end+1).type='move';
+    entities(end).val={moves{i}(1),moves{i}(2)};
+      
+    
+    %specity important write parameters here.
+    entities(end+1).type='write';
+    entities(end).val={fields(1).cadFile(1:end-4)};
+    entities(end).dtc = num2str(dtc(i));
+    entities(end).mag = num2str(mag);
+    entities(end).aperture = ap;
+    entities(end).current=current;
+    entities(end).cadFile=fields(1).cadFile;
+    entities(end).doseFile=fields(1).doseFile;
+    entities(end).spacing={num2str(spacing(i)) ,num2str(spacing(i))};
+    
+    pos=pos+moves{i};
+   
+end
+
+entities(end+1).type='move';
+entities(end).val={-pos(1),-pos(2)};
+
+for i=1:length(entities)
+    entities(i).dir=pathname;
+end
+
+entities(1).val={length(entities)-1};
+
+%dir = pwd;
+urpec_makeRunFile_v3(entities);
+
+cd(dir);
+
+
+
+%% ########## Deprecated below ########## 
+
 %% Set up for basic run
 files={'C:\Users\Nichol\Box Sync\Nichol Group\Nichol\fab\SiGe_Qubit3_L3_sm.dxf',...
     'C:\Users\Nichol\Box Sync\Nichol Group\Nichol\fab\SiGe_Qubit3_L3_med.dxf',...

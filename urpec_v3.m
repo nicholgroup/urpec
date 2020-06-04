@@ -10,14 +10,14 @@ function [  ] = urpec_v3( config )
 % dose. This function assumes that one unit in the input pattern file is one
 % micron.
 %
-% The layer scheme is as follows. Layers 1 and 2 of the input file will
+% The layer scheme is as follows. The names for all layers should be numbers.
+% Layers 1 and 2 of the input file will
 % both be output to layer 1 of the output file. Layer 1 will not be
 % fractured, and layer 2 will be fractured. Layers 3 and 4 of the input
 % file will be output to layer 2 of the output filed, etc. If the polygons
 % are not fractured, the are written with an average dose. 
 %
 % Right now this is intended for use with NPGS.
-%
 %
 % config is an optional struct with the following optional fields:
 %
@@ -47,6 +47,10 @@ function [  ] = urpec_v3( config )
 %
 %   psfFile: point-spread function file
 %
+%
+%   fracNum: maximum number of times to fracutre a shape
+%
+%   fracSize: minimum size for fractured shapes, in units of dx.
 %
 % call this function without any arguments, or via
 % urpec(struct('dx',0.005, 'subfieldSize',20,'maxIter',6,'dvals',[1:.2:2.4]))
@@ -81,6 +85,9 @@ config = def(config,'maxIter',6);  %max number of iterations for the deconvoluti
 config = def(config,'dvals',linspace(1,2.0,15));  %doses corresponding to output layers, in units of dose to clear
 config=def(config,'file',[]); 
 config=def(config,'psfFile',[]);
+config=def(config,'fracNum',3);
+config=def(config,'fracSize',4);
+
 
 %used below. These jet-like colors are compatible with NPGS.
 ctab={[0 0 175] [0 0 255] [0 63 255] [0 127 255] [0 191 255] [15 255 239] [79 255 175] [143 255 111] [207 255 047] [255 223 0] [255 159 0] [255 095 0] [255 31 0] [207 0 0] [143 0 0] };
@@ -102,6 +109,14 @@ end
 if strmatch(ext,'.dxf')
     [lwpolylines,lwpolylayers]=dxf2coord_20(pathname,filename);
     %For later use in breaking into fields
+    %These are actually the layer names, not the numbers. 
+    %If they do not follow the convention, then default to layer 1 and
+    %fracturing.
+    for i=1:length(lwpolylayers)
+        if isempty(str2num(lwpolylayers{i}))
+            lwpolylayers{i}='2';
+        end
+    end
     layerNum=str2num(cell2mat(lwpolylayers));
 end
 
@@ -265,6 +280,7 @@ for ar = 1:length(objects) %EJC 5/5/2018: run time (should) scale ~linearly~ wit
     %polysbin = or(polysbin, subpoly);
     
     polysbin=polysbin+subpoly;
+    
 end
 
 [xpts ypts] = size(polysbin);
@@ -311,16 +327,20 @@ psf=psfForward./sum(psfForward(:))+eta*psfBackscatter./sum(psfBackscatter(:));
 xpad=size(polysbin,1)-size(psf,1);
 if xpad>0
     psf=padarray(psf,[xpad/2,0],0,'both');
+    padPoints1=padPoints;
 elseif xpad<0
     polysbin=padarray(polysbin,[-xpad/2,0],0,'both');
+    padPoints1=padPoints-xpad/2;
 end
 
 %pad in the y direction
 ypad=size(polysbin,2)-size(psf,2);
 if ypad>0
-    psf=padarray(psf,[0,ypad/2],0,'both');    
+    psf=padarray(psf,[0,ypad/2],0,'both');
+    padPoints2=padPoints;
 elseif ypad<0
     polysbin=padarray(polysbin,[0,-ypad/2],0,'both');
+    padPoints2=padPoints-ypad/2; 
 end
 
 %normalize
@@ -369,8 +389,8 @@ end
 dd=doseNew;
 ss=shape;
 %unpad arrays
-doseNew=dd(padPoints+1:end-padPoints-1*addY,padPoints+1:end-padPoints-1*addX);
-shape=ss(padPoints+1:end-padPoints-1,padPoints+1:end-padPoints-1);
+doseNew=dd(padPoints1+1:end-padPoints1-1*addY,padPoints2+1:end-padPoints2-1*addX);
+shape=ss(padPoints1+1:end-padPoints1-1,padPoints2+1:end-padPoints2-1);
 mp=size(doseNew,1);
 np=size(doseNew,2);
 
@@ -421,6 +441,16 @@ fracture=0;
 for ar = 1:length(objects)
     
     p=objects{ar};
+    
+    %check for convexity. URpec does not always handle concave polygons
+    %well. There should be a different fracturing method for concave
+    %polygons.
+    isConvex = checkConvex(p(:,2)',p(:,3)');
+    if ~isConvex
+        fprintf('Concave polygon found. You may not want to fracture. \n');
+        %layerNum(ar)=floor((layerNum(ar)-1)/2)*2+1;
+    end
+    
     p=p(:,2:3);
     
     pu=unique(p,'rows');
@@ -441,7 +471,6 @@ for ar = 1:length(objects)
     nPolys2Frac=sum(~mod(layerNum,2));
     
     nPolysNot2Frac=sum(mod(layerNum,2));
-
         
     if fracture
         
@@ -483,8 +512,8 @@ for ar = 1:length(objects)
 %         figure(556); clf; imagesc(xpnew,ypnew,shotMapNew);
 %         hold on; plot(p(:,1),p(:,2));
         
-        minSize=config.dx*4; %Smallest eventual polygon size
-        fracNum=3; %number of times to fracture each polygon each iteration.
+        minSize=config.dx*config.fracSize; %Smallest eventual polygon size
+        fracNum=config.fracNum; %number of times to fracture each polygon each iteration.
         
         if (maxDose-minDose)<dDose %don't need to fracture          
             subField(ar).poly(1).x=p(:,1);
@@ -549,9 +578,19 @@ for ar = 1:length(objects)
                         ydiff=max(yline)-min(yline);
                         
                         shouldFracX=(xdiff>dDose/(2+iter*.5));
+                        if isempty(shouldFracX)
+                            shouldFracX=0;
+                        end
                         shouldFracY=(ydiff>dDose/(2+iter*.5));
+                        if isempty(shouldFracY)
+                            shouldFracY=0;
+                        end
                         canFracX=(poly(i).sizeX/fracNum>minSize);
                         canFracY=(poly(i).sizeY/fracNum>minSize);
+                        
+%                         if isempty(canFracX) || isempty(shouldFracX) || isempty(canFracY) ||isempty(shouldFracY)
+%                             error('Fracturing error. Try decreasing the step size')
+%                         end
                         
                         %Actually do the fracturing
                         if canFracX || canFracY
@@ -562,12 +601,22 @@ for ar = 1:length(objects)
                         end
                         
                         %Check for empty polys and get rid of them
+                        %Also check for polys of zero area and get rid of
+                        %them.
                         for j=(length(polys2Add):-1:1)
+                            
                             if isempty(polys2Add{j}) || any(size(polys2Add{j}.x)~=size(polys2Add{j}.y))
                                 polys2Add(j)=[];
                             end
+                            
+                            try 
+                                if polyarea(polys2Add{j}.x,polys2Add{j}.y)<1e-5
+                                    polys2Add(j)=[];
+                                end
+                            end
+                            
                         end
-                        
+
                         %If after all this we didn't actually fracture anything,
                         %then skip and move on.
                         if length(polys2Add)==1
@@ -581,8 +630,10 @@ for ar = 1:length(objects)
                             %plot(polys2Add{j}.x,polys2Add{j}.y)
                             %Close the polys.
                            
-                            polys2Add{j}.x= [polys2Add{j}.x polys2Add{j}.x(1)];
-                            polys2Add{j}.y= [polys2Add{j}.y polys2Add{j}.y(1)];
+                            if polys2Add{j}.x(1)~=polys2Add{j}.x(end) || polys2Add{j}.y(1)~=polys2Add{j}.y(end)
+                                polys2Add{j}.x= [polys2Add{j}.x polys2Add{j}.x(1)];
+                                polys2Add{j}.y= [polys2Add{j}.y polys2Add{j}.y(1)];
+                            end
                             polys2Add{j}.x= polys2Add{j}.x';
                             polys2Add{j}.y= polys2Add{j}.y';                            
                             polys2Add{j}.good=0;

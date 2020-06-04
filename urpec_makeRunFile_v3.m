@@ -1,4 +1,4 @@
-function [] = urpec_makeRunFile(entities)
+function [] = urpec_makeRunFile_v3(entities)
 % [] = urpec_makeRunFile(entities)
 %   Makes a run file for NPGS.
 %   See the run_urpec script for how to set up the entities argument.
