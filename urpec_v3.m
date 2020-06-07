@@ -429,6 +429,56 @@ dvalsAct=[];
 % d.dvals=dvals;
 % %save('fractureData','d');
 
+%Check for concave polygons. We will break them up into triangles for
+%fracturing.
+objectsTmp={};
+layerNumTmp=[];
+
+for ar = 1:length(objects)
+    
+    p=objects{ar};
+    
+    p=p(:,2:3);
+    
+    isConvex = checkConvex(p(:,1)',p(:,2)');
+    if ~isConvex
+        fprintf('Concave polygon found. \n');
+        x=p(:,1)';
+        y=p(:,2)';
+        
+        %Convert polygon to polyshape type for matlab triangulation. If
+        %this gives a warning, it means the concave polygon is really messed
+        %up, and it's probably not worth continuing.
+        warning('');
+        polyin=polyshape(x,y);
+        [warnMsg, warnId] = lastwarn;
+        if ~isempty(warnMsg)
+            figure(666); clf; plot(x,y);
+            title('Bad polygon!');
+            error('Bad concave polygon found. Fix it in your pattern, and try again.');
+        end
+        x=polyin.Vertices(:,1)';
+        y=polyin.Vertices(:,2)';
+        T = triangulation(polyin);
+        %triplot(T);
+        CL=T.ConnectivityList;
+        for tt=1:length(T.ConnectivityList)
+            xnew=[x(CL(tt,:)) x(CL(tt,1))];
+            ynew=[y(CL(tt,:)) y(CL(tt,1))];
+            znew=ones(length(xnew),1);
+            objectsTmp{end+1}=[znew xnew' ynew'];
+            layerNumTmp(end+1)=layerNum(ar);
+        end
+        
+    else
+        objectsTmp{end+1}=objects{ar};
+        layerNumTmp(end+1)=layerNum(ar);
+    end
+            
+end
+objects=objectsTmp;
+layerNum=layerNumTmp;
+
 fprintf('Fracturing...\n');
 fracCount=0;
 notFracCount=0;
@@ -441,15 +491,7 @@ fracture=0;
 for ar = 1:length(objects)
     
     p=objects{ar};
-    
-    %check for convexity. URpec does not always handle concave polygons
-    %well. There should be a different fracturing method for concave
-    %polygons.
-    isConvex = checkConvex(p(:,2)',p(:,3)');
-    if ~isConvex
-        fprintf('Concave polygon found. You may not want to fracture. \n');
-        %layerNum(ar)=floor((layerNum(ar)-1)/2)*2+1;
-    end
+
     
     p=p(:,2:3);
     
@@ -535,6 +577,7 @@ for ar = 1:length(objects)
             
             nPolys=1;
             iter=0;
+            
             while ~allGood
                 %Show the fracturing status. Also check for empty polygons
                 %and zero-area polygons.
@@ -624,6 +667,8 @@ for ar = 1:length(objects)
                             i=i+1;
                         end
                         
+                        length(polys2Add);
+                        
                         %Go through the new polygons and find out if
                         %they're good.
                         for j=1:length(polys2Add)
@@ -657,7 +702,7 @@ for ar = 1:length(objects)
                         
                         %Add the new polygons back to the total list of polygons
                         if ~isempty(polys2Add)
-                            if iter==1
+                            if iter==1 
                                 for j=1:length(polys2Add)
                                     poly(j)=polys2Add{j};
                                 end
@@ -677,11 +722,16 @@ for ar = 1:length(objects)
                     end
                     
                     %If we can't fracture anymore, call it good.
-                    if ~canFracX && ~canFracY
+                    if (~canFracX && ~canFracY) 
                         poly(i).good=1;
                     end
                 end
                 
+                if iter==fracNum
+                    for j=1:length(poly)
+                        poly(j).good=1;
+                    end
+                end
                 allGood=all([poly.good]);    
                 
             end
@@ -721,7 +771,11 @@ fprintf('Exporting to %s...\n',outputFileName);
 
 fields(j).cadFile=[filename(1:end-4) '_' descr '_' num2str(j) '.dc2'];
 
-FID = dxf_open(outputFileName);
+try
+    FID = dxf_open(outputFileName);
+catch
+    keyboard;
+end
         
 polygons=struct();
 polygons(1)=[];
