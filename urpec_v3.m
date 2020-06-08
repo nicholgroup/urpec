@@ -99,7 +99,7 @@ fprintf('urpec is running...\n');
 if isempty(config.file)
     %choose and load file
     fprintf('Select your cad file.\n')
-    [filename, pathname,ext]=fileparts(uigetfile({'*.dxf','*.mat'}));
+    [filename, pathname,ext]=fileparts(uigetfile({'*.mat';'*.dxf'}));
 else
     [pathname,filename,ext] = fileparts(config.file);
     pathname=[pathname '\'];
@@ -440,9 +440,11 @@ for ar = 1:length(objects)
     
     p=p(:,2:3);
     
+    fracture=~mod(layerNum(ar),2);
+
     isConvex = checkConvex(p(:,1)',p(:,2)');
-    if ~isConvex
-        fprintf('Concave polygon found. \n');
+    if ~isConvex && fracture
+        fprintf('Concave polygon to be fractured found. \n');
         x=p(:,1)';
         y=p(:,2)';
         
