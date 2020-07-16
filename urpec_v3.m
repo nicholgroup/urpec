@@ -452,6 +452,14 @@ for ar = 1:length(objects)
         %this gives a warning, it means the concave polygon is really messed
         %up, and it's probably not worth continuing.
         warning('');
+        %get rid of duplicates before doing polyshape. This is an easy way
+        %to fix some bad polygons.
+        A=[x' y'];
+        [~, ia]=unique(A,'rows');
+        ia=sort(ia);
+        ia=[ia; 1];
+        %A=A(ia,:);
+        x=A(:,1)'; y=A(:,2)';
         polyin=polyshape(x,y);
         [warnMsg, warnId] = lastwarn;
         if ~isempty(warnMsg)
@@ -776,7 +784,9 @@ fields(j).cadFile=[filename(1:end-4) '_' descr '_' num2str(j) '.dc2'];
 try
     FID = dxf_open(outputFileName);
 catch
+    fprintf('Close the dxf file, and then type dbcont and press enter. \n')
     keyboard;
+    FID = dxf_open(outputFileName);
 end
         
 polygons=struct();
