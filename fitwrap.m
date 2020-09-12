@@ -1,4 +1,4 @@
-function [beta1,r,j,COVB,mse,err] = fitwrap(ctrl, x, y, beta0, model, mask)
+function [beta1,r,j,COVB,mse,err,se] = fitwrap(ctrl, x, y, beta0, model, mask)
 %function [beta1,r,j,COVB,mse,err] = fitwrap(ctrl, x, y, beta0, model, mask)
 % beta1 = fitwrap(ctrl, x, y, beta0, model, mask)
 % ctrl: plinit, plfit, woff, nofit, pause, samefig, fine, robust
@@ -21,7 +21,9 @@ function [beta1,r,j,COVB,mse,err] = fitwrap(ctrl, x, y, beta0, model, mask)
 % j is the jacobian
 % COVB is the variance-covariance matrix
 % mse contains details about the error model
-% err are the upper and lower error bounds for the predictions. the format
+% err are the upper and lower error bounds for the predictions. These are
+% 95% confidence bounds.
+% SE are the standard error bounds
 % is val=beta(i,j) - err(i,j,1) + err(i,j,1)
 % (c) 2010 Hendrik Bluhm.  Please see LICENSE and COPYRIGHT information in plssetup.m.
 
@@ -124,10 +126,20 @@ for i = 1:n
       COVB(i,:)=COVBT(:);
       mse(i,:)=mseT(:);
       try
-        err(i,mask,1:2)=abs(repmat(beta1(i,mask)',1,2)-nlparci(betaT,rT,'Jacobian',JT));
+          %compute standard error JMN 2020/03/04
+          alpha=.05; %95 confidence interval
+          ci = nlparci(betaT,rT,JT,alpha);
+          t = tinv(1-alpha/2,length(x(i,:))-length(betaT));
+          nlinfit_se = (ci(:,2)-ci(:,1)) ./ (2*t);
+          se(i,mask)=nlinfit_se;
+          
+          %compute 95% confidence interval
+          err=nlparci(betaT,rT,'Jacobian',JT);
+          err(i,mask,1:2)=abs(repmat(beta1(i,mask)',1,2)-nlparci(betaT,rT,'Jacobian',JT));
       catch
          warning('could not propagate errors properly')
          err(i,mask,1:2) = nan(sum(mask),2);
+         se(i,mask,1:2) = nan(sum(mask),1);
       end
     end
      

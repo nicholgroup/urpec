@@ -99,18 +99,21 @@ fprintf('urpec is running...\n');
 if isempty(config.file)
     %choose and load file
     fprintf('Select your cad file.\n')
-    [filename, pathname,ext]=fileparts(uigetfile({'*.mat';'*.dxf'}));
+    [filename, pathname]=uigetfile({'*.dxf';'*.mat'});
+    [pathname,filename,ext] = fileparts(fullfile(pathname,filename));
 else
     [pathname,filename,ext] = fileparts(config.file);
-    pathname=[pathname '\'];
-    filename=[filename ext];
+
 end
 
+pathname=[pathname '\'];
+filename=[filename ext];
+    
 if strmatch(ext,'.dxf')
     [lwpolylines,lwpolylayers]=dxf2coord_20(pathname,filename);
     %For later use in breaking into fields
     %These are actually the layer names, not the numbers. 
-    %If they do not follow the convention, then default to layer 1 and
+    %If they do not follow the convention, then default to layer 2 and
     %fracturing.
     for i=1:length(lwpolylayers)
         if isempty(str2num(lwpolylayers{i}))
