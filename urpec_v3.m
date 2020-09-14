@@ -166,6 +166,12 @@ for ar = 1:object_num
     areas{ar} = polyarea(curr_obj(:,2), curr_obj(:,3));
 end
 
+%defult to fracturing if the layer number extraction went bad. This can
+%happen with the wrong autcad version, for example.
+if length(layerNum)~=length(objects)
+    layerNum=ones(1,length(objects)).*2; 
+end
+
 display(['dxf CAD file analyzed.']);
 
 if length(objects)>1
@@ -299,12 +305,16 @@ end
 
 fprintf('Deconvolving psf...');
 
-eta=psf.eta;
-alpha=psf.alpha;
-beta=psf.beta;
-minSize=min([max(abs(XP(:))),max(abs(YP(:)))]);
-psfRange=round(min([minSize,20]));
-descr=psf.descr;
+try
+    eta=psf.eta;
+    alpha=psf.alpha;
+    beta=psf.beta;
+    minSize=min([max(abs(XP(:))),max(abs(YP(:)))]);
+    psfRange=round(min([minSize,20]));
+    descr=psf.descr;
+catch
+    error('Bad PSF file.');
+end
 
 %target dx for making the psf. We will average later.
 dx_t=.002;
@@ -463,19 +473,25 @@ for ar = 1:length(objects)
         ia=[ia; 1];
         %A=A(ia,:);
         x=A(:,1)'; y=A(:,2)';
+        
+        %try to make a nice polygon out of the coordinates. This will try
+        %to simplify any strange shapes. 
         polyin=polyshape(x,y);
+        lastwarn('');
+        %Do it again to see if it fixed it the first time.
+        polyin=polyshape(polyin.Vertices(:,1)',polyin.Vertices(:,2)');
         [warnMsg, warnId] = lastwarn;
         if ~isempty(warnMsg)
             figure(666); clf; plot(x,y);
             title('Bad polygon!');
-            error('Bad concave polygon found. Fix it in your pattern, and try again.');
+            error('Bad concave polygon found. Fix it in your pattern.');
         end
         x=polyin.Vertices(:,1)';
         y=polyin.Vertices(:,2)';
         T = triangulation(polyin);
         %triplot(T);
         CL=T.ConnectivityList;
-        for tt=1:length(T.ConnectivityList)
+        for tt=1:size(T.ConnectivityList,1)
             xnew=[x(CL(tt,:)) x(CL(tt,1))];
             ynew=[y(CL(tt,:)) y(CL(tt,1))];
             znew=ones(length(xnew),1);
@@ -505,7 +521,6 @@ for ar = 1:length(objects)
     
     p=objects{ar};
 
-    
     p=p(:,2:3);
     
     pu=unique(p,'rows');
