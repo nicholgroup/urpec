@@ -1,23 +1,7 @@
 function [  ] = dxf2dc2( config )
 % function [  ] = dxf2dc2( config )
-% Generates a proximity-effect-corrected .dxf file for electron beam 
-% lithography.
 % 
-% The corrected file is created by deconvolving a point spread function 
-% from an input .dxf or .mat pattern file.
-% 
-% The output file has different colors, each of which recieve a different
-% dose. This function assumes that one unit in the input pattern file is one
-% micron.
-%
-% The layer scheme is as follows. The names for all layers should be numbers.
-% Layers 1 and 2 of the input file will
-% both be output to layer 1 of the output file. Layer 1 will not be
-% fractured, and layer 2 will be fractured. Layers 3 and 4 of the input
-% file will be output to layer 2 of the output filed, etc. If the polygons
-% are not fractured, the are written with an average dose. 
-%
-% Right now this is intended for use with NPGS.
+% Converst a .dxf file to .dc2 format.
 %
 % config is an optional struct with the following optional fields:
 %
@@ -39,7 +23,7 @@ ctab={[0 0 175] [0 0 255] [0 63 255] [0 127 255] [0 191 255] [15 255 239] [79 25
 if isempty(config.file)
     %choose and load file
     fprintf('Select your cad file.\n')
-    [filename, pathname]=uigetfile({'*.dxf';'*.mat'});
+    [filename, pathname]=uigetfile({'*.dxf'});
     [pathname,filename,ext] = fileparts(fullfile(pathname,filename));
 else
     [pathname,filename,ext] = fileparts(config.file);
@@ -61,15 +45,6 @@ if strmatch(ext,'.dxf')
         end
     end
     layerNum=str2num(cell2mat(lwpolylayers));
-end
-
-if strmatch(ext,'.mat')
-    d=load([pathname filename]);
-    layerNum=[d.polygons.layer];
-    lwpolylines=[ones(size(d.polygons(1).p,1),1).*1 d.polygons(1).p];
-    for i=2:length(d.polygons)
-        lwpolylines=[lwpolylines; [ones(size(d.polygons(i).p,1),1).*i d.polygons(i).p]];
-    end
 end
 
 fprintf('Converting...');
@@ -99,8 +74,7 @@ if object_num <= 1
     objects{count} = lwpolylines(:, 1:3);
 end
 
-%defult to fracturing if the layer number extraction went bad. This can
-%happen with the wrong autcad version, for example.
+%defult to layer 2 if the layer number extraction went bad.
 if length(layerNum)~=length(objects)
     layerNum=ones(1,length(objects)).*2; 
 end
@@ -109,7 +83,7 @@ end
 polygons=struct();
 polygons(1)=[];
 
-%Write in order of objects.
+%Write the objects
 for ar=1:length(objects)
     
     X=objects{ar}(:,2);
