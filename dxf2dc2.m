@@ -33,6 +33,7 @@ end
 pathname=[pathname '\'];
 filename=[filename ext];
     
+try
 if strmatch(ext,'.dxf')
     [lwpolylines,lwpolylayers]=dxf2coord_20(pathname,filename);
     %For later use in breaking into fields
@@ -45,6 +46,9 @@ if strmatch(ext,'.dxf')
         end
     end
     layerNum=str2num(cell2mat(lwpolylayers));
+end
+catch
+    error('Trouble with the dxf file. Resave as .dxf 2000.')
 end
 
 fprintf('Converting...');
@@ -90,7 +94,11 @@ for ar=1:length(objects)
     Y=objects{ar}(:,3);
     
     polygons(end+1).p=[X Y];
-    polygons(end).color=ctab{layerNum(ar)}; 
+    try
+        polygons(end).color=ctab{layerNum(ar)};
+    catch
+        polygons(end).color=ctab{1};        
+    end
     polygons(end).layer=layerNum(ar);
     polygons(end).lineType=1;
     

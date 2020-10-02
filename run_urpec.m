@@ -1,4 +1,4 @@
-%% Choose pattern file and psf file
+%% Step 1: Choose pattern file and psf file
 % This works best if your pattern file is already in the
 % NPGS project directory.
 
@@ -6,13 +6,13 @@
 
 [psf ]=uigetfile('PSF*.*','Select PSF file.');
 
-%% Run urpec with default settings
+%% Step 2: Run urpec with default settings
 
 urpec_v3(struct('file',[pathnameP filenameP],...
     'psfFile',psf));
 
 
-%% Make a run file
+%% Step 3: Make a default run file
 % Before you run this cell, make sure the field files ('...fields.mat'), dose files ('.txt'), 
 % and the pattern files ('.dc2') are in the proper NPGS project directory. 
 % If your pattern file was already in this directory before pec, everything
