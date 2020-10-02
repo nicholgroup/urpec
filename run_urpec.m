@@ -40,6 +40,9 @@ moves={[300,300]};
 [filename pathname]=uigetfile('*fields.mat');
 files1={filename};
 
+%write layers
+layers=[1];
+
 dir=pwd;
 cd(pathname);
 
@@ -67,7 +70,6 @@ for i=1:length(files1)
     
     entities(end+1).type='move';
     entities(end).val={moves{i}(1),moves{i}(2)};
-      
     
     %specity important write parameters here.
     entities(end+1).type='write';
@@ -79,6 +81,7 @@ for i=1:length(files1)
     entities(end).cadFile=fields(1).cadFile;
     entities(end).doseFile=fields(1).doseFile;
     entities(end).spacing={num2str(spacing(i)) ,num2str(spacing(i))};
+    entities(end).layer=layers(i);
     
     pos=pos+moves{i};
    
