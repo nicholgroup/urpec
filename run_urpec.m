@@ -1,3 +1,16 @@
+%% README
+% Run steps 1-3 to run urpec and make a run file. 
+
+% The layer scheme for your cad file is as follows. 
+% The names for all layers should be numbers.
+% Layers 1 and 2 of the input file will
+% both be output to layer 1 of the output file. Layer 1 will not be
+% fractured, and layer 2 will be fractured. Layers 3 and 4 of the input
+% file will be output to layer 2 of the output filed, etc. If the polygons
+% are not fractured, the are written with an average dose. 
+%
+% Any layer names that do not respect this format will be fractured and
+% output to layer 1 of the dc2 file.
 %% Step 1: Choose pattern file and psf file
 % This works best if your pattern file is already in the
 % NPGS project directory.
