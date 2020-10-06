@@ -43,11 +43,15 @@ for i=1:length(raw);
             %ind;
         end
     end
+    
+    if strmatch(raw{i,2},'Trajectory')
+        nelec=raw{i,3};
+    end
 end
 % pc
 % count
 fprintf('done.\n');
-
+fprintf('The average energy deposited per electron is %f keV. \n',sum(evals)/nelec);
 
 %
 %figure(333); clf; loglog(rvals,evals);
