@@ -81,23 +81,16 @@ for i=1:length(doses)
 end
 tot_str_s = '';
 
-
+nextnum = 2; %layer numbering starts at 2 and goes up with patterns created with urpec
 % basic format for each pair of lines is 
 % level #, layer #, mode, move, max mag, mag, spacing, spacing, aperture,
 % current, color, dwell time, dose, ?
 
-%layer numbering starts at 2 and goes up with patterns created with urpec
-%JMN
-try
-    layerNum = config.layer;
-catch
-    layerNum=1;
-end
 %calculate the area per pixel for later use in automatically setting the
 %right dwell time.
 A=str2num(config.spacing{1})*str2num(config.spacing{2})*1e-20*1e4;
 
-strline1 = ['lev_1 ' num2str(layerNum+1) ' w    0,0    1500    ' config.mag '    ' config.spacing{1} '    ' config.spacing{2} '    ' aperture '     ' current];
+strline1 = ['lev_1 ' num2str(nextnum) ' w    0,0    1500    ' config.mag '    ' config.spacing{1} '    ' config.spacing{2} '    ' aperture '     ' current];
 tot_str_s = strline1;
 for i=1:length(ctab)
     dt=A*sdose(i)*1e-6/(str2num(current)*1e-12)*1e6; %autocompute dwell time.

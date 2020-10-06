@@ -1,4 +1,17 @@
-%% Choose pattern file and psf file
+%% README
+% Run steps 1-3 to run urpec and make a run file. 
+
+% The layer scheme for your cad file is as follows. 
+% The names for all layers should be numbers.
+% Layers 1 and 2 of the input file will
+% both be output to layer 1 of the output file. Layer 1 will not be
+% fractured, and layer 2 will be fractured. Layers 3 and 4 of the input
+% file will be output to layer 2 of the output filed, etc. If the polygons
+% are not fractured, the are written with an average dose. 
+%
+% Any layer names that do not respect this format will be fractured and
+% output to layer 1 of the dc2 file.
+%% Step 1: Choose pattern file and psf file
 % This works best if your pattern file is already in the
 % NPGS project directory.
 
@@ -6,13 +19,13 @@
 
 [psf ]=uigetfile('PSF*.*','Select PSF file.');
 
-%% Run urpec with default settings
+%% Step 2: Run urpec with default settings
 
 urpec_v3(struct('file',[pathnameP filenameP],...
     'psfFile',psf));
 
 
-%% Make a run file
+%% Step 3: Make a default run file
 % Before you run this cell, make sure the field files ('...fields.mat'), dose files ('.txt'), 
 % and the pattern files ('.dc2') are in the proper NPGS project directory. 
 % If your pattern file was already in this directory before pec, everything
@@ -39,6 +52,9 @@ moves={[300,300]};
 %pattern files
 [filename pathname]=uigetfile('*fields.mat');
 files1={filename};
+
+%write layers
+layers=[1];
 
 dir=pwd;
 cd(pathname);
@@ -67,7 +83,6 @@ for i=1:length(files1)
     
     entities(end+1).type='move';
     entities(end).val={moves{i}(1),moves{i}(2)};
-      
     
     %specity important write parameters here.
     entities(end+1).type='write';
@@ -79,6 +94,7 @@ for i=1:length(files1)
     entities(end).cadFile=fields(1).cadFile;
     entities(end).doseFile=fields(1).doseFile;
     entities(end).spacing={num2str(spacing(i)) ,num2str(spacing(i))};
+    entities(end).layer=layers(i);
     
     pos=pos+moves{i};
    

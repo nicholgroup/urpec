@@ -2,6 +2,8 @@ function [  ] = urpec_v3( config )
 % function [  ] = urpec_v3( config )
 % Generates a proximity-effect-corrected .dxf file for electron beam 
 % lithography.
+%
+% To run urpec and make a run file, see the script run_urpec.
 % 
 % The corrected file is created by deconvolving a point spread function 
 % from an input .dxf or .mat pattern file.
