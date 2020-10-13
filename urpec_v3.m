@@ -558,13 +558,19 @@ for ar = 1:length(objects)
         %Reduce the size of the shot map to save memory
         shape=shotMap>0;
         tt=XPold.*shape;
-        maxX=max(tt(:));
-        minX=min(tt(:));
+        [maxX ind]=max(tt(:));
+        maxX=maxX*sign(tt(ind)); %needed in the case that maxX is negative
+        [minX ind]=min(tt(:));
+        minX=minX*sign(tt(ind)); %needed in the case that minX is positive
+
         sizeX=maxX-minX;
         
         tt=YPold.*shape;
         maxY=max(tt(:));
+        maxY=maxY*sign(tt(ind)); %needed in the case that maxY is negative
         minY=min(tt(:));
+        minY=minY*sign(tt(ind)); %needed in the case that minY is positive
+
         sizeY=maxY-minY;
         clear tt;
         
@@ -575,7 +581,7 @@ for ar = 1:length(objects)
         xinds=round([(minX-xpold(1))/dx+1:(maxX-xpold(1))/dx+1]);
         yinds=round([(minY-ypold(1))/dy+1:(maxY-ypold(1))/dy+1]);
         
-        %figure(555); clf; imagesc(shotMap);
+        figure(555); clf; imagesc(shotMap);
         
         shotMapNew=shotMap(yinds,xinds);
         XPnew=XPold(yinds,xinds)+dx/2; xpnew=xpold(xinds)+dx/2;
