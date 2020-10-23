@@ -1,5 +1,5 @@
 function [beta1,r,j,COVB,mse,err,se] = fitwrap(ctrl, x, y, beta0, model, mask)
-%function [beta1,r,j,COVB,mse,err] = fitwrap(ctrl, x, y, beta0, model, mask)
+%function [beta1,r,j,COVB,mse,err,se] = fitwrap(ctrl, x, y, beta0, model, mask)
 % beta1 = fitwrap(ctrl, x, y, beta0, model, mask)
 % ctrl: plinit, plfit, woff, nofit, pause, samefig, fine, robust
 % y = model(beta, x);     
