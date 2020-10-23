@@ -401,6 +401,10 @@ for i=1:config.maxIter
     
 end
 
+if meanDose<.98
+    warning('Deconvolution not converged. Consider increasing maxIter.');
+end
+
 dd=doseNew;
 ss=shape;
 %unpad arrays
@@ -416,12 +420,15 @@ try
     doseNew(doseNew==0)=NaN;
     doseNew(doseNew<0)=NaN;
 end
-
+[N,X]=hist(doseNew(:),config.dvals);
 figure(557); clf;
 hist(doseNew(:),config.dvals);
 xlabel('Relative dose');
 ylabel('Count');
 drawnow;
+if max(N)==N(end)
+    warning('Max dose is the highest dval. Consider changing your dvals.');
+end
 
 doseStore=doseNew;
 
@@ -510,7 +517,8 @@ end
 objects=objectsTmp;
 layerNum=layerNumTmp;
 
-fprintf('Fracturing...\n');
+%fprintf('Fracturing...');
+progressbar('Fracturing');
 fracCount=0;
 notFracCount=0;
 
@@ -547,7 +555,10 @@ for ar = 1:length(objects)
     if fracture
         
         fracCount=fracCount+1;
-        fprintf('Fracturing polygon %d, %d of %d \n',ar,fracCount,nPolys2Frac);
+        %fprintf('Fracturing polygon %d, %d of %d \n',ar,fracCount,nPolys2Frac);
+        %fprintf('.');
+        progressbar(fracCount/nPolys2Frac);
+
         %First figure out the variation in dose across the polygon
         maxDose=max(shotMap(:));
         minDose=min(shotMap(:));
@@ -558,18 +569,20 @@ for ar = 1:length(objects)
         %Reduce the size of the shot map to save memory
         shape=shotMap>0;
         tt=XPold.*shape;
+        tt(tt==0)=NaN;
         [maxX ind]=max(tt(:));
-        maxX=maxX*sign(tt(ind)); %needed in the case that maxX is negative
+        %maxX=maxX*sign(tt(ind)); %needed in the case that maxX is negative
         [minX ind]=min(tt(:));
-        minX=minX*sign(tt(ind)); %needed in the case that minX is positive
+        %minX=minX*sign(tt(ind)); %needed in the case that minX is positive
 
         sizeX=maxX-minX;
         
         tt=YPold.*shape;
+        tt(tt==0)=NaN;
         maxY=max(tt(:));
-        maxY=maxY*sign(tt(ind)); %needed in the case that maxY is negative
+        %maxY=maxY*sign(tt(ind)); %needed in the case that maxY is negative
         minY=min(tt(:));
-        minY=minY*sign(tt(ind)); %needed in the case that minY is positive
+        %minY=minY*sign(tt(ind)); %needed in the case that minY is positive
 
         sizeY=maxY-minY;
         clear tt;
@@ -581,8 +594,10 @@ for ar = 1:length(objects)
         xinds=round([(minX-xpold(1))/dx+1:(maxX-xpold(1))/dx+1]);
         yinds=round([(minY-ypold(1))/dy+1:(maxY-ypold(1))/dy+1]);
         
-        figure(555); clf; imagesc(shotMap);
-        
+        %figure(555); clf; imagesc(shotMap);
+        xinds(isnan(xinds))=[];
+        yinds(isnan(yinds))=[];
+
         shotMapNew=shotMap(yinds,xinds);
         XPnew=XPold(yinds,xinds)+dx/2; xpnew=xpold(xinds)+dx/2;
         YPnew=YPold(yinds,xinds)+dy/2; ypnew=ypold(yinds)+dy/2;
@@ -631,6 +646,7 @@ for ar = 1:length(objects)
                         end
                     end
                 end
+                nPolys=length(poly);
                 %drawnow;
                 iter=iter+1;
                 i=1;
@@ -794,7 +810,9 @@ for ar = 1:length(objects)
 
 end
 
-fprintf('Fracturing complete. \n')
+progressbar(fracCount/nPolys2Frac);
+
+%fprintf('Fracturing complete. \n')
 
 %save the final files
 fields=struct();
@@ -810,7 +828,7 @@ fields(j).cadFile=[filename(1:end-4) '_' descr '_' num2str(j) '.dc2'];
 try
     FID = dxf_open(outputFileName);
 catch
-    fprintf('Close the dxf file, and then type dbcont and press enter. \n')
+    fprintf('Either dxf_open isn''t on your path, or you need to close the dxf file, and then type dbcont and press enter. \n')
     keyboard;
     FID = dxf_open(outputFileName);
 end
@@ -819,6 +837,7 @@ polygons=struct();
 polygons(1)=[];
 
 %Write in order of objects.
+%figure(778); clf; hold on;
 for ar=1:length(subField)
     
     for b=1:length(subField(ar).poly)
