@@ -50,9 +50,16 @@ function [  ] = urpec_v3( config )
 %   psfFile: point-spread function file
 %
 %
-%   fracNum: maximum number of times to fracutre a shape
+%   fracNum: maximum number of times to fracture a shape
 %
 %   fracSize: minimum size for fractured shapes, in units of dx.
+%
+%   padLen: the size with which to pad the CAD file, in units of microns.
+%   The defaul is 5 microns. In general, a larger pad size will improve the
+%   accuracy by accounting for long-distance proximity effects, but the
+%   computation will take longer.
+%
+%   outputDir: the directory in which to save the output files.
 %
 % call this function without any arguments, or via
 % urpec(struct('dx',0.005, 'subfieldSize',20,'maxIter',6,'dvals',[1:.2:2.4]))
@@ -89,6 +96,7 @@ config=def(config,'file',[]);
 config=def(config,'psfFile',[]);
 config=def(config,'fracNum',3);
 config=def(config,'fracSize',4);
+config=def(config,'padLen',5);
 
 
 %used below. These jet-like colors are compatible with NPGS.
@@ -97,6 +105,8 @@ ctab={[0 0 175] [0 0 255] [0 63 255] [0 127 255] [0 191 255] [15 255 239] [79 25
 dx = config.dx;
 
 fprintf('urpec is running...\n');
+
+% ########## Load pattern file ##########
 
 if isempty(config.file)
     %choose and load file
@@ -110,6 +120,11 @@ end
 
 pathname=[pathname '\'];
 filename=[filename ext];
+
+config=def(config,'outputDir',pathname);
+if config.outputDir(end)~='\'
+    config.outputDir=[config.outputDir '\'];
+end
     
 if strmatch(ext,'.dxf')
     [lwpolylines,lwpolylayers]=dxf2coord_20(pathname,filename);
@@ -204,8 +219,8 @@ maxXold=maxX;
 minXold=minX;
 maxYold=maxY;
 minYold=minY;
-padSize=ceil(5/dx).*dx;
-padPoints=padSize/dx;
+padSize=ceil(config.padLen/dx).*dx;
+padPoints=config.padLen/dx;
 maxX=maxXold+padSize;
 minX=minXold-padSize;
 maxY=maxYold+padSize;
@@ -298,6 +313,7 @@ end
 
 fprintf('done analyzing file.\n')
 
+% ########## Deconvoltion ##########
 if isempty(config.psfFile)
     fprintf('Select point spread function file.\n')
     load(uigetfile('*PSF*'));
@@ -311,7 +327,8 @@ try
     eta=psf.eta;
     alpha=psf.alpha;
     beta=psf.beta;
-    minSize=min([max(abs(XP(:))),max(abs(YP(:)))]);
+    %minSize=min([max(abs(XP(:))),max(abs(YP(:)))]);
+    minSize=min([max(XP(:))-min(XP(:)),max(YP(:))-min(YP(:))]);
     psfRange=round(min([minSize,20]));
     descr=psf.descr;
 catch
@@ -451,6 +468,9 @@ dvalsAct=[];
 % d.dvals=dvals;
 % %save('fractureData','d');
 
+% ########## Fracturing ##########
+
+
 %Check for concave polygons. We will break them up into triangles for
 %fracturing.
 objectsTmp={};
@@ -461,6 +481,12 @@ for ar = 1:length(objects)
     p=objects{ar};
     
     p=p(:,2:3);
+    
+    pu=unique(p,'rows');
+    %the dxf importer has duplicate points sometimes.
+    if length(pu)==length(p)/2-1
+        p=p(1:end/2,:);
+    end
     
     fracture=~mod(layerNum(ar),2);
 
@@ -518,7 +544,7 @@ objects=objectsTmp;
 layerNum=layerNumTmp;
 
 %fprintf('Fracturing...');
-progressbar('Fracturing');
+progressbar('Fracturing','Averaging');
 fracCount=0;
 notFracCount=0;
 
@@ -534,7 +560,7 @@ for ar = 1:length(objects)
     p=p(:,2:3);
     
     pu=unique(p,'rows');
-    %the dxf importer has duplicate points.
+    %the dxf importer has duplicate points sometimes.
     if length(pu)==length(p)/2-1
         p=p(1:end/2,:);
     end
@@ -557,7 +583,7 @@ for ar = 1:length(objects)
         fracCount=fracCount+1;
         %fprintf('Fracturing polygon %d, %d of %d \n',ar,fracCount,nPolys2Frac);
         %fprintf('.');
-        progressbar(fracCount/nPolys2Frac);
+        progressbar(fracCount/nPolys2Frac,[]);
 
         %First figure out the variation in dose across the polygon
         maxDose=max(shotMap(:));
@@ -714,7 +740,7 @@ for ar = 1:length(objects)
 
                         %If after all this we didn't actually fracture anything,
                         %then skip and move on.
-                        if length(polys2Add)==1
+                        if length(polys2Add)<=1
                             polys2Add={};
                             i=i+1;
                         end
@@ -796,7 +822,8 @@ for ar = 1:length(objects)
     else %no fracturing
         
         notFracCount=notFracCount+1;
-        fprintf('Averaging polygon %d, %d of %d \n',ar,notFracCount,nPolysNot2Frac);
+        progressbar([],notFracCount/nPolysNot2Frac);
+        %fprintf('Averaging polygon %d, %d of %d \n',ar,notFracCount,nPolysNot2Frac);
         
         subField(ar).poly(1).x=p(:,1);
         subField(ar).poly(1).y=p(:,2);
@@ -810,16 +837,18 @@ for ar = 1:length(objects)
 
 end
 
-progressbar(fracCount/nPolys2Frac);
+progressbar(fracCount/nPolys2Frac,notFracCount/nPolysNot2Frac);
 
 %fprintf('Fracturing complete. \n')
+
+% ########## Exporting ##########
 
 %save the final files
 fields=struct();
 
 j=1; %residual counter left over from when we had a fields struct.
-outputFileName=[pathname filename(1:end-4) '_' descr '_' num2str(j) '.dxf'];
-dc2FileName=[pathname filename(1:end-4) '_' descr '_' num2str(j) '.dc2'];
+outputFileName=[config.outputDir filename(1:end-4) '_' descr '_' num2str(j) '.dxf'];
+dc2FileName=[config.outputDir filename(1:end-4) '_' descr '_' num2str(j) '.dc2'];
 
 fprintf('Exporting to %s...\n',outputFileName);
 
@@ -868,7 +897,7 @@ fprintf('Exporting to %s...\n',dc2FileName);
 dc2write(polygons,dc2FileName);
 
 %Save doses here
-doseFileName=[pathname filename(1:end-4) '_' descr '_' num2str(j) '.txt'];
+doseFileName=[config.outputDir filename(1:end-4) '_' descr '_' num2str(j) '.txt'];
 
 fileID = fopen(doseFileName,'w');
 fprintf(fileID,'%3.3f \r\n',dvalsAct);
@@ -880,7 +909,7 @@ fields(j).dvalsAct=dvalsAct;
 fields(j).polygons=polygons;
 fprintf('Finished exporting.\n');
 
-fieldsFileName=[pathname filename(1:end-4) '_' descr '_fields.mat'];
+fieldsFileName=[config.outputDir filename(1:end-4) '_' descr '_fields.mat'];
 save(fieldsFileName,'fields');
 
 fprintf('urpec is finished.\n')
