@@ -220,7 +220,7 @@ minXold=minX;
 maxYold=maxY;
 minYold=minY;
 padSize=ceil(config.padLen/dx).*dx;
-padPoints=config.padLen/dx;
+padPoints=padSize/dx;
 maxX=maxXold+padSize;
 minX=minXold-padSize;
 maxY=maxYold+padSize;
@@ -239,7 +239,7 @@ if config.autoRes && (totPoints<.8*config.targetPoints || totPoints>1.2*config.t
     expand=ceil(log2(sqrt(totPoints/config.targetPoints)));
     dx=dx*2^(expand);
     fprintf('Resetting the resolution to %3.4f.\n',dx);
-    padSize=ceil(5/dx).*dx;
+    padSize=ceil(config.padLen/dx).*dx;
     padPoints=padSize/dx;
     maxX=maxXold+padSize;
     minX=minXold-padSize;
@@ -365,6 +365,8 @@ elseif xpad<0
     padPoints1=padPoints-xpad/2;
 end
 
+padPoints1=round(padPoints1);
+
 %pad in the y direction
 ypad=size(polysbin,2)-size(psf,2);
 if ypad>0
@@ -374,6 +376,8 @@ elseif ypad<0
     polysbin=padarray(polysbin,[0,-ypad/2],0,'both');
     padPoints2=padPoints-ypad/2; 
 end
+
+padPoints2=round(padPoints2);
 
 %normalize
 psf=psf./sum(psf(:));
@@ -404,13 +408,13 @@ for i=1:config.maxIter
     
     figure(556); clf;
     subplot(1,2,2);
-    imagesc(yp,xp,doseActual);
+    imagesc(xp,yp,doseActual);
     title(sprintf('Actual dose. Iteration %d',i));
     set(gca,'YDir','norm');
     
     doseNew=doseNew+1.2*(shape-doseShape); %Deonvolution: add the difference between the desired dose and the actual dose to doseShape, defined above
     subplot(1,2,1);
-    imagesc(yp,xp,doseNew);
+    imagesc(xp,yp,doseNew);
     title(sprintf('Programmed dose. Iteration %d',i));
     set(gca,'YDir','norm');
     
@@ -583,7 +587,7 @@ for ar = 1:length(objects)
         fracCount=fracCount+1;
         %fprintf('Fracturing polygon %d, %d of %d \n',ar,fracCount,nPolys2Frac);
         %fprintf('.');
-        progressbar(fracCount/nPolys2Frac,[]);
+        progressbar(fracCount/(nPolys2Frac+1),[]);
 
         %First figure out the variation in dose across the polygon
         maxDose=max(shotMap(:));
@@ -822,7 +826,7 @@ for ar = 1:length(objects)
     else %no fracturing
         
         notFracCount=notFracCount+1;
-        progressbar([],notFracCount/nPolysNot2Frac);
+        progressbar([],notFracCount/(nPolysNot2Frac+1));
         %fprintf('Averaging polygon %d, %d of %d \n',ar,notFracCount,nPolysNot2Frac);
         
         subField(ar).poly(1).x=p(:,1);
@@ -837,7 +841,7 @@ for ar = 1:length(objects)
 
 end
 
-progressbar(fracCount/nPolys2Frac,notFracCount/nPolysNot2Frac);
+progressbar(1,1);
 
 %fprintf('Fracturing complete. \n')
 
