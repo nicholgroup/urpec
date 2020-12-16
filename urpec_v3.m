@@ -298,8 +298,9 @@ polysbin = zeros(size(XP));
 % for i=1:length(fields)
 %     fields(i).fieldShift=-fields(i).center;
 % end
-
+progressbar('Analyzing polygons');
 for ar = 1:length(objects) %EJC 5/5/2018: run time (should) scale ~linearly~ with med/sm object num
+    progressbar(ar/length(objects));
     p = objects{ar};
     
     subpoly = inpolygon(XP, YP, p(:,2), p(:,3));
