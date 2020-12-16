@@ -189,7 +189,7 @@ if length(layerNum)~=length(objects)
     layerNum=ones(1,length(objects)).*2; 
 end
 
-display(['dxf CAD file analyzed.']);
+display(['CAD file analyzed.']);
 
 if length(objects)>1
     medall=vertcat(objects{1},objects{2});
