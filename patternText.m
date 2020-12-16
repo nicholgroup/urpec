@@ -9,7 +9,7 @@ function [BB] = patternText(str,targetLen,cntr)
 %
 % targetLen is the target length of the text
 %
-% cntr is the center of the text.
+% cntr is a two-component vector describing the center of the text.
 %
 % BB is the cell array of polygons. Note that the first column of each
 % element is the y value, and the second element is the X value.
