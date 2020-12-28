@@ -873,7 +873,7 @@ polygons(1)=[];
 %figure(778); clf; hold on;
 %the subfield struct array holds all of the fractured polygons which came
 %from the initial polygons.
-progressbar('Saving');
+progressbar('Saving to .dxf');
 for ar=1:length(subField)
     progressbar(ar/length(subField));
     
