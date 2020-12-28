@@ -3,7 +3,7 @@ function [] = dc2write(polygons,fname)
 %   Write polygons into a dc2 file
 %
 %   fname: filename
-%   polygons: struct array with the following field
+%   polygons: struct array with the following fields
 %       p: polygon
 %       layer: layer number
 %       color: color in rgb format

@@ -45,23 +45,28 @@ if ~isempty(config.current)
     current=num2str(config.current);
 end
 
+%Jet-like colors
+ctab={[0 0 175] [0 0 255] [0 63 255] [0 127 255] [0 191 255] [15 255 239] [79 255 175] [143 255 111] [207 255 047] [255 223 0] [255 159 0] [255 095 0] [255 31 0] [207 0 0] [143 0 0]};
+
 % select dose file
 % display('Please choose layer doses...');
 % [baseName, folder] = uigetfile('C:\NPGS\Projects\*.txt');
 % file_doses = fullfile(folder, baseName);
 
 fprintf('Loading doses...\n');
-doses=load(config.doseFile);
+try
+    doses=load(config.doseFile);
 
-% convert dose percentages to actual doses using config.dtc
-doses = doses*str2num(config.dtc);
+    % convert dose percentages to actual doses using config.dtc
+    doses = doses*str2num(config.dtc);
+catch
+    fprintf('File note found. Using dct.\n');
+    doses=linspace(1,1,length(ctab)).*str2num(config.dtc);
+end
 
 %find layers in use
 fprintf('Loading cad file from %s \n',config.cadFile);
 cad_t = fileread(config.cadFile);
-
-%Jet-like colors
-ctab={[0 0 175] [0 0 255] [0 63 255] [0 127 255] [0 191 255] [15 255 239] [79 255 175] [143 255 111] [207 255 047] [255 223 0] [255 159 0] [255 095 0] [255 31 0] [207 0 0] [143 0 0]};
 
 colorstrings = {};
 for i=1:length(ctab)

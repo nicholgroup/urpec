@@ -875,19 +875,19 @@ polygons(1)=[];
 %from the initial polygons.
 for ar=1:length(subField)
     
-    for iPoly=1:length(subField(ar).poly)
-        if ~isempty(subField(ar).poly(iPoly).x) %Needed because sometimes our fracturing algorithm generates empty polygons.
-            i=subField(ar).poly(iPoly).dose;
-            FID=dxf_set(FID,'Color',ctab{i}./255,'Layer',subField(ar).poly(iPoly).layer); 
-            X=subField(ar).poly(iPoly).x;
-            Y=subField(ar).poly(iPoly).y;
+    for b=1:length(subField(ar).poly)
+        if ~isempty(subField(ar).poly(b).x) %Needed because sometimes our fracturing algorithm generates empty polygons.
+            i=subField(ar).poly(b).dose;
+            FID=dxf_set(FID,'Color',ctab{i}./255,'Layer',subField(ar).poly(b).layer); 
+            X=subField(ar).poly(b).x;
+            Y=subField(ar).poly(b).y;
             Z=X.*0;
             dxf_polyline(FID,X,Y,Z);
             %plot(X,Y);
             
             polygons(end+1).p=[X Y];
             polygons(end).color=ctab{i}; %JMN 2019/10/12
-            polygons(end).layer=subField(ar).poly(iPoly).layer;
+            polygons(end).layer=subField(ar).poly(b).layer;
             polygons(end).lineType=1;
         end
         
