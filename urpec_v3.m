@@ -873,12 +873,14 @@ polygons(1)=[];
 %figure(778); clf; hold on;
 %the subfield struct array holds all of the fractured polygons which came
 %from the initial polygons.
+progressbar('Saving');
 for ar=1:length(subField)
+    progressbar(ar/length(subField));
     
     for iPoly=1:length(subField(ar).poly)
         if ~isempty(subField(ar).poly(iPoly).x) %Needed because sometimes our fracturing algorithm generates empty polygons.
             i=subField(ar).poly(iPoly).dose;
-            FID=dxf_set(FID,'Color',ctab{i}./255,'Layer',subField(ar).poly(iPoly).layer); 
+            FID=dxf_set(FID,'Color',ctab{i}./255,'Layer',subField(ar).poly(iPoly).layer);
             X=subField(ar).poly(iPoly).x;
             Y=subField(ar).poly(iPoly).y;
             Z=X.*0;
