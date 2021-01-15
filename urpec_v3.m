@@ -61,6 +61,9 @@ function [  ] = urpec_v3( config )
 %
 %   outputDir: the directory in which to save the output files.
 %
+%   savedxf: boolean variable indicating whether or not to save output dxf.
+%   Default is false, because npgs uses dc2 files.
+%
 % call this function without any arguments, or via
 % urpec(struct('dx',0.005, 'subfieldSize',20,'maxIter',6,'dvals',[1:.2:2.4]))
 % for example
@@ -97,6 +100,8 @@ config=def(config,'psfFile',[]);
 config=def(config,'fracNum',3);
 config=def(config,'fracSize',4);
 config=def(config,'padLen',5);
+config=def(config,'savedxf',false);
+
 
 
 %used below. These jet-like colors are compatible with NPGS.
@@ -854,16 +859,17 @@ j=1; %residual counter left over from when we had a fields struct.
 outputFileName=[config.outputDir filename(1:end-4) '_' descr '_' num2str(j) '.dxf'];
 dc2FileName=[config.outputDir filename(1:end-4) '_' descr '_' num2str(j) '.dc2'];
 
-fprintf('Exporting to %s...\n',outputFileName);
-
 fields(j).cadFile=[filename(1:end-4) '_' descr '_' num2str(j) '.dc2'];
 
-try
-    FID = dxf_open(outputFileName);
-catch
-    fprintf('Either dxf_open isn''t on your path, or you need to close the dxf file, and then type dbcont and press enter. \n')
-    keyboard;
-    FID = dxf_open(outputFileName);
+if config.savedxf
+    fprintf('Exporting to %s...\n',outputFileName);
+    try
+        FID = dxf_open(outputFileName);
+    catch
+        fprintf('Either dxf_open isn''t on your path, or you need to close the dxf file, and then type dbcont and press enter. \n')
+        keyboard;
+        FID = dxf_open(outputFileName);
+    end
 end
         
 polygons=struct();
@@ -873,18 +879,22 @@ polygons(1)=[];
 %figure(778); clf; hold on;
 %the subfield struct array holds all of the fractured polygons which came
 %from the initial polygons.
-progressbar('Saving to .dxf');
+if config.savedxf
+    progressbar('Saving to .dxf');
+end
 for ar=1:length(subField)
     progressbar(ar/length(subField));
     
     for iPoly=1:length(subField(ar).poly)
         if ~isempty(subField(ar).poly(iPoly).x) %Needed because sometimes our fracturing algorithm generates empty polygons.
             i=subField(ar).poly(iPoly).dose;
-            FID=dxf_set(FID,'Color',ctab{i}./255,'Layer',subField(ar).poly(iPoly).layer);
             X=subField(ar).poly(iPoly).x;
             Y=subField(ar).poly(iPoly).y;
-            Z=X.*0;
-            dxf_polyline(FID,X,Y,Z);
+            Z=X.*0;   
+            if config.savedxf
+                FID=dxf_set(FID,'Color',ctab{i}./255,'Layer',subField(ar).poly(iPoly).layer);
+                dxf_polyline(FID,X,Y,Z);
+            end
             %plot(X,Y);
             
             polygons(end+1).p=[X Y];
@@ -897,8 +907,9 @@ for ar=1:length(subField)
     
 end
 
-
-dxf_close(FID);
+if config.savedxf
+    dxf_close(FID);
+end
 
 fprintf('Exporting to %s...\n',dc2FileName);
 
