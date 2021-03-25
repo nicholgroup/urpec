@@ -261,17 +261,19 @@ end
 %the psf
 addX=0;
 if ~mod(length(xp),2)
-    maxX=maxX+dx;
+    %maxX=maxX+dx;
     addX=1;
+    xp=[xp; xp(end)+dx];
 end
 addY=0;
 if ~mod(length(yp),2)
-    maxY=maxY+dx;
+    %maxY=maxY+dx;
     addY=1;
+    yp=[yp yp(end)+dx];
 end
 
-xp = minX:dx:maxX;
-yp = minY:dx:maxY;
+% xp = minX:dx:maxX;
+% yp = minY:dx:maxY;
 [XP, YP] = meshgrid(xp, yp);
 
 [mp, np] = size(XP);
