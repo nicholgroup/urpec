@@ -139,7 +139,7 @@ for i = 1:n
       catch
          warning('could not propagate errors properly')
          err(i,mask,1:2) = nan(sum(mask),2);
-         se(i,mask,1:2) = nan(sum(mask),1);
+         se(i,mask,1) = nan(sum(mask),1);
       end
     end
      
