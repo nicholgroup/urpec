@@ -219,10 +219,15 @@ fprintf(['Creating 2D binary grid spanning medium feature write field (spacing =
 %in a polygon or 0 if not
 
 %Make the simulation area bigger by the pad length to account for proximity effects
-maxXold=maxX;
-minXold=minX;
-maxYold=maxY;
-minYold=minY;
+% maxXold=maxX;
+% minXold=minX;
+% maxYold=maxY;
+% minYold=minY;
+% QHF 2021/03/31: occasionally precision causes inconsistency between xp/yp and xpold/ypold. Force them to round to 4 decimal points    
+maxXold=round(maxX,4);
+minXold=round(minX,4);
+maxYold=round(maxY,4);
+minYold=round(minY,4);
 padSize=ceil(config.padLen/dx).*dx;
 padPoints=padSize/dx;
 maxX=maxXold+padSize;
@@ -261,17 +266,20 @@ end
 %the psf
 addX=0;
 if ~mod(length(xp),2)
-    maxX=maxX+dx;
+    %maxX=maxX+dx;
     addX=1;
+    %xp=[xp; xp(end)+dx]; %QHF 2021/3/30: I don't think this is correct
+    xp=[xp xp(end)+dx];
 end
 addY=0;
 if ~mod(length(yp),2)
-    maxY=maxY+dx;
+    %maxY=maxY+dx;
     addY=1;
+    yp=[yp yp(end)+dx];
 end
 
-xp = minX:dx:maxX;
-yp = minY:dx:maxY;
+% xp = minX:dx:maxX;
+% yp = minY:dx:maxY;
 [XP, YP] = meshgrid(xp, yp);
 
 [mp, np] = size(XP);
