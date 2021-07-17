@@ -426,7 +426,7 @@ for iter=1:config.maxIter
     doseNew=doseNew+1.2*(shape-doseShape); %Deonvolution: add the difference between the desired dose and the actual dose to doseShape, defined above
     subplot(1,2,1);
     imagesc(xp,yp,doseNew);
-    title(sprintf('Programmed dose. Iteration %d',i));
+    title(sprintf('Programmed dose. Iteration %d',iter));
     set(gca,'YDir','norm');
     
     drawnow;
@@ -909,6 +909,7 @@ for ar=1:length(subField)
             polygons(end).color=ctab{i}; %JMN 2019/10/12
             polygons(end).layer=subField(ar).poly(iPoly).layer;
             polygons(end).lineType=1;
+            polygons(end).dose=subField(ar).poly(iPoly).dose;
         end
         
     end
