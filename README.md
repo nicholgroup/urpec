@@ -21,6 +21,7 @@ Current PSFs available are
 - Si, 30 kV, 200 nm PMMA
 - Si with 90 nm SiO2, 30 kV, 200 nm PMMA
 - LiNbO3, 30 kV, 200 nm PMMA
+- LiNbO3, 50 kV, 200 nm PMMA
 
 If you need a different PSF, you should download Casino, run a simulation, save the data, and run the function casinoPSF.
 
