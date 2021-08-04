@@ -732,7 +732,9 @@ for ar = 1:length(objects)
                             end
                             
                             %Clean up the fractured polys here.
-                            [polys2Add{j}.x,polys2Add{j}.y]=fixPoly(polys2Add{j}.x,polys2Add{j}.y);
+                            try
+                                [polys2Add{j}.x,polys2Add{j}.y]=fixPoly(polys2Add{j}.x,polys2Add{j}.y);
+                            end
                             
                         end
 
