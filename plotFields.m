@@ -5,6 +5,13 @@ function [] = plotFields(filename)
 
 ctab={[0 0 175] [0 0 255] [0 63 255] [0 127 255] [0 191 255] [15 255 239] [79 255 175] [143 255 111] [207 255 047] [255 223 0] [255 159 0] [255 095 0] [255 31 0] [207 0 0] [143 0 0] };
 
+%Make a colormap based on these colors for later use.
+cmap=[];
+for iColor=1:length(ctab)
+    cmap=[cmap; ctab{iColor}./255];
+end
+colormap(cmap);
+
 if ~exist('filename','var')
     [filename, pathname]=uigetfile('*_fields.mat');
     [pathname,filename,ext] = fileparts(fullfile(pathname,filename));
@@ -25,6 +32,7 @@ polygons=fields.polygons;
 
 figure(1); clf; hold on;
 
+
 for ipoly=1:length(polygons)
     
     p=polygons(ipoly).p;
@@ -40,6 +48,7 @@ for ipoly=1:length(polygons)
         continue
     end
         
+    %subplot(1,2,1);
     plot([x x(1)],[y y(1)],'color',polygons(ipoly).color./255)
     
     if ~any(nvertices==[3,4])
@@ -50,15 +59,19 @@ for ipoly=1:length(polygons)
         for itri=1:size(T.ConnectivityList,1)
             xnew=[x(CL(itri,:)) x(CL(itri,1))];
             ynew=[y(CL(itri,:)) y(CL(itri,1))];
-            plot(xnew,ynew,'color','r');
+            %subplot(1,2,1); hold on;
+            plot(xnew,ynew,'color',polygons(ipoly).color./255);
+%             subplot(1,2,2); hold on;
+%             plot(xnew,ynew,'color','r');
         end
     end
     
     
 end
-    
-    
-    
+
+%Add a colorbar to the plot
+set(gca, 'CLim', [fields.dvalsAct(1), fields.dvalsAct(end)]);
+colorbar;    
     
 end
 

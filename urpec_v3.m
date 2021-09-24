@@ -1,4 +1,4 @@
-function [  ] = urpec_v3( config )
+function [fieldsFileName] = urpec_v3( config )
 % function [  ] = urpec_v3( config )
 % Generates a proximity-effect-corrected .dxf file for electron beam 
 % lithography.
