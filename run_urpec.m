@@ -7,7 +7,7 @@
 % both be output to layer 1 of the output file. Layer 1 will not be
 % fractured, and layer 2 will be fractured. Layers 3 and 4 of the input
 % file will be output to layer 2 of the output filed, etc. If the polygons
-% are not fractured, the are written with an average dose. 
+% are not fractured, they are written with an average dose. 
 %
 % Any layer names that do not respect this format will be fractured and
 % output to layer 1 of the dc2 file.
@@ -30,6 +30,10 @@ urpec_v3(struct('file',[pathnameP filenameP],...
 % and the pattern files ('.dc2') are in the proper NPGS project directory. 
 % If your pattern file was already in this directory before pec, everything
 % should be ok.
+%
+% It should be possible to run the run file right away, but sometimes you
+% may have to resave the .dc2 file for NPGS, and the reload and resave the
+% run file.
 
 %Magnification
 mag=1500;
