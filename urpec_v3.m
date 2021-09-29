@@ -70,7 +70,7 @@ function [fieldsFileName] = urpec_v3( config )
 %
 %
 % By:
-% Adina Ripin aripin@u.rochester.edu
+% Adina Ripin 
 % Elliot Connors econnors@ur.rochester.edu
 % John Nichol jnich10@ur.rochester.edu
 %
@@ -351,7 +351,7 @@ end
 % dx_f=round(dx/dx_t);
 
 %psf changes definition immediately below. Note: this scheme only works
-%properly if the step size is larger than the 
+%properly if the step size is larger than psfRange.
 npsf=round(psfRange./dx);
 psf=zeros(round(psfRange./dx));
 [xpsf ypsf]=meshgrid([-npsf:1:npsf],[-npsf:1:npsf]);
@@ -361,8 +361,8 @@ rpsf2=xpsf.^2+ypsf.^2;
 psfForward=1/(1+eta).*(1/(pi*alpha^2).*exp(-rpsf2./alpha.^2));
 psfBackscatter=1/(1+eta).*(eta/(pi*beta^2).*exp(-rpsf2./beta.^2));
 %psfTot=1/(1+eta).*(1/(pi*alpha^2).*exp(-rpsf2./alpha.^2)+eta/(pi*beta^2).*exp(-rpsf2./beta.^2));
-%Now force the ratio of the forward and backscattered parts to be the
-%correct.
+
+%Now force the ratio of the forward and backscattered parts to be correct.
 psf=psfForward./sum(psfForward(:))+eta*psfBackscatter./sum(psfBackscatter(:));
 
 %Zero pad to at least 10um x 10 um;
@@ -397,7 +397,7 @@ dstart=polysbin;
 shape=polysbin>0; %1 inside shapes and 0 everywhere else
 
 dose=dstart;
-doseNew=shape; %initial guess at dose. Just the dose to clear everywhere
+doseNew=shape; %initial guess at dose. Just the dose to clear everywhere.
 figure(555); clf; imagesc(xp,yp,polysbin);
 set(gca,'YDir','norm');
 title('CAD pattern');
@@ -411,7 +411,7 @@ for iter=1:config.maxIter
     doseActual=ifft2(fft2(doseNew).*fft2(psf)); 
 
     doseActual=real(fftshift(doseActual)); 
-    %The next line is needed becase we are tryin to do FFT shift on an
+    %The next line is needed becase we are trying to do FFT shift on an
     %array with an odd number of elements. 
     doseActual(2:end,2:end)=doseActual(1:end-1,1:end-1);
     doseShape=doseActual.*shape; %total only given to shapes. Excludes area outside shapes. We don't actually care about this.
