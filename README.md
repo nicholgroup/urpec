@@ -9,7 +9,7 @@ Versions 1 and 2 will automatically fracture all polygons.
 
 Version 3 can either assign an average dose to each polygon, or it can fracture each polygon into smaller polygons for higher resolution exposures. The fracturing algorithm in version 3 uses "nicer" shapes.
 
-Right now this is intended for use with NPGS, and urpec automatically outputs a .dc2 file suitable for NPGS. Urpec can easily be adapted for use with other electro-beam lithography platforms, such as Elionix. Please contact us for more details about this.
+Right now this is intended for use with NPGS, and urpec automatically outputs a .dc2 file suitable for NPGS. Urpec can easily be adapted for use with other electron-beam lithography platforms, such as Elionix. Please contact us for more details about this.
 
 To run urpec, download all files to a folder. Set you matlab path to this folder and run urpec_v3, optionally with arguments. See the documentation inside urpec for calling urpec with arguments. You can also run it from a script. This is useful for batch processing. See the script called run_urpec.
 
@@ -52,13 +52,8 @@ urpec is written by Adina Ripin, Elliot Connors, and John Nichol.
 
 Version history
 
-v2: 7/23/2019. 
-  Added capability for different write fields and writing directly to dc2 file.
-v3: 12/18/2019. 
-  Fixed bug associated with fftshift. 
-  Writes all doses to the same layer but with different colors. 
-  PSF improvements.
-  Entirely new fracturing algorithm
+- v2: 7/23/2019, Added capability for different write fields and writing directly to dc2 file.
+- v3: 12/18/2019, Fixed bug associated with fftshift, writes all doses to the same layer but with different colors, PSF improvements, entirely new fracturing algorithm.
 
 
 
