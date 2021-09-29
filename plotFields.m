@@ -10,7 +10,6 @@ cmap=[];
 for iColor=1:length(ctab)
     cmap=[cmap; ctab{iColor}./255];
 end
-colormap(cmap);
 
 if ~exist('filename','var')
     [filename, pathname]=uigetfile('*_fields.mat');
@@ -31,7 +30,7 @@ load(filename);
 polygons=fields.polygons;
 
 figure(1); clf; hold on;
-
+colormap(cmap);
 
 for ipoly=1:length(polygons)
     
@@ -72,6 +71,9 @@ end
 %Add a colorbar to the plot
 set(gca, 'CLim', [fields.dvalsAct(1), fields.dvalsAct(end)]);
 colorbar;    
+xlabel('x (microns)');
+ylabel('y (microns)');
+box on;
     
 end
 
