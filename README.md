@@ -11,7 +11,7 @@ Version 3 can either assign an average dose to each polygon, or it can fracture 
 
 Right now this is intended for use with NPGS, and urpec automatically outputs a .dc2 file suitable for NPGS. Urpec can easily be adapted for use with other electron-beam lithography platforms, such as Elionix. Please contact us for more details about this.
 
-To run urpec, download all files to a folder. Set you matlab path to this folder and run urpec_v3, optionally with arguments. See the documentation inside urpec for calling urpec with arguments. You can also run it from a script. This is useful for batch processing. See the script called run_urpec.
+To run urpec, download all files to a folder. Set your matlab path to this folder and run urpec_v3, optionally with arguments. See the documentation inside urpec for calling urpec with arguments. You can also run it from a script. This is useful for batch processing. See the script called run_urpec.
 
 Current PSFs available are 
 - GaAs, 30 kV, 200 nm PMMA
