@@ -27,7 +27,7 @@ rvals=(1:dr:10000);
 evals=rvals.*0;
 count=0; %counts the number of collisions in the pmma that were included in the loop.
 pc=0; %counts the number of times an electron was in the pmma.
-for i=1:length(raw);
+for i=1:length(raw)
     if strmatch(raw{i,8},'PMMA')
         pc=pc+1;
         try
@@ -59,7 +59,7 @@ fprintf('The average energy deposited per electron is %f keV. \n',sum(evals)/nel
 %Fit the data on a log log scale.
 fitfn=@(p,x) p(1)/(1+p(2)).*((1/(pi*p(3)^2)).*exp(-x.^2/p(3).^2)+p(2)/(pi*p(4)^2)*exp(-x.^2/p(4).^2));
 
-beta=[10000 .7 10 2000];
+beta=[10000 .7 5 2000];
 
 % figure(333); hold on;
 % loglog(rvals,fitfn(beta,rvals));
@@ -76,12 +76,11 @@ fitfn=@(p,x) log(p(1)/(1+p(2)).*((1/(pi*p(3)^2)).*exp(-(exp(x).^2)./p(3)^2)+p(2)
 ee=evals./rvals;
 
 %Detemrine eta and keep it fixed during the fit
-forwardRange=100;
+forwardRange=100; %We assume all forward scattering happens in less than 100 nm.
 inds=(1:1:forwardRange/dr);
-f=sum(evals(inds))-sum(evals(inds(end)+inds));
-r=sum(evals(inds(end)+1:end));
+f=sum(evals(inds))-sum(evals(inds(end)+inds)); %approximation of the forward scattered energy
+r=sum(evals(inds(end)+1:end)); %approximation of the back-scattered energy
 eta=r/f;
-
 
 %uncomment to keep an even density of points in logspace
 % ii=linspace(0,log10(rvals(end)),200);
@@ -99,10 +98,10 @@ keep=keep & logKeep;
 y=y(keep);
 x=log(rvals);
 x=x(keep);
-beta=[20000 eta 10 1448];
+beta=[20000 eta 2 1448];
 beta=fitwrap('plinit plfit robust',x,y,beta,fitfn,[1 0 1 1]);
-xlabel('Range (nm)');
-ylabel('Energy deposited');
+xlabel('log(range [nm])');
+ylabel('log(energy deposited per distance [kV/nm])');
 title('Data and fit');
 
 beta=real(beta);
@@ -113,7 +112,11 @@ psf.eta=beta(2); %ratio of backscattered energy to forward scattered energy
 psf.alpha=beta(3).*1e-3;  %forward scattering range, in units of microns
 psf.beta=beta(4).*1e-3;  %backward scattering range, in units of microns
 psf.range=5;
-
+psf.x=x;
+psf.y=y;
+psf.beta0=beta0;
+psf.fitfn=fitfn;
+psf.mask=[1 0 1 1];
 descr=input('Enter a description, e.g., Si30kV \n','s');
 psf.descr=descr;
 
