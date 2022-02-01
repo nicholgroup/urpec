@@ -1,8 +1,7 @@
 function [fieldsFileName] = urpec_v3( config )
-% function [  ] = urpec_v3( config )
-% Generates a proximity-effect-corrected .dxf file for electron beam 
-% lithography.
+% urpec_v3 Generates a proximity-effect-corrected pattern file for EBL
 %
+% function [  ] = urpec_v3( config )
 % To run urpec and make a run file, see the script run_urpec.
 % 
 % The corrected file is created by deconvolving a point spread function 
@@ -64,6 +63,11 @@ function [fieldsFileName] = urpec_v3( config )
 %   savedxf: boolean variable indicating whether or not to save output dxf.
 %   Default is false, because npgs uses dc2 files.
 %
+%   overlap: boolean variable indicating how overlaps are handled. If false,
+%   urpec will accont for the fact that overlap areas are multiply exposed.
+%   If true, urpect will allow over exposure in overlap regions. Default is
+%   true.
+%
 % call this function without any arguments, or via
 % urpec(struct('dx',0.005, 'subfieldSize',20,'maxIter',6,'dvals',[1:.2:2.4]))
 % for example
@@ -101,8 +105,7 @@ config=def(config,'fracNum',3);
 config=def(config,'fracSize',4);
 config=def(config,'padLen',5);
 config=def(config,'savedxf',false);
-
-
+config=def(config,'overlap',true);
 
 %used below. These jet-like colors are compatible with NPGS.
 ctab={[0 0 175] [0 0 255] [0 63 255] [0 127 255] [0 191 255] [15 255 239] [79 255 175] [143 255 111] [207 255 047] [255 223 0] [255 159 0] [255 095 0] [255 31 0] [207 0 0] [143 0 0] };
@@ -394,7 +397,14 @@ padPoints2=round(padPoints2);
 psf=psf./sum(psf(:));
 
 dstart=polysbin;
-shape=polysbin>0; %1 inside shapes and 0 everywhere else
+if config.overlap
+    %1 inside shapes and 0 everywhere else. Allow overexposure
+    shape=polysbin>0;
+else
+    %compensate for overexposure
+    shape=polysbin;
+end
+
 
 dose=dstart;
 doseNew=shape; %initial guess at dose. Just the dose to clear everywhere.

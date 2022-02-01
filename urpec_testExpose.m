@@ -58,8 +58,6 @@ function [  ] = urpec_testExpose( config )
 
 tic
 
-addpath('dxflib');
-
 debug=0;
 
 if ~exist('config','var')
@@ -69,36 +67,66 @@ end
 config = def(config,'dx',.01);   %Grid spacing in microns. This is now affected by config.targetPoints.
 config = def(config,'targetPoints',50e6);  %Target number of points for the simulation. 50e6 takes about 10 min to complete.
 config = def(config,'autoRes',true);  %auto adjust the resolution
-config = def(config,'subfieldSize',50);  %subfield size in microns
 config = def(config,'maxIter',6);  %max number of iterations for the deconvolution
-config = def(config,'dvals',[1:.1:2.4]);  %doses corresponding to output layers, in units of dose to clear
-config = def(config,'windowVal',10);  %Smoothing factor for the dose modultion. Default is 10. Units are approximately the grid spacing.
+config = def(config,'dvals',linspace(1,2.0,15));  %doses corresponding to output layers, in units of dose to clear
 config=def(config,'file',[]); 
 config=def(config,'psfFile',[]);
+config=def(config,'fracNum',3);
+config=def(config,'fracSize',4);
+config=def(config,'padLen',5);
+config=def(config,'savedxf',false);
 config=def(config,'layer',false);
-config=def(config,'layerShift',[]);
 
+%used below. These jet-like colors are compatible with NPGS.
+ctab={[0 0 175] [0 0 255] [0 63 255] [0 127 255] [0 191 255] [15 255 239] [79 255 175] [143 255 111] [207 255 047] [255 223 0] [255 159 0] [255 095 0] [255 31 0] [207 0 0] [143 0 0] };
 
 dx = config.dx;
-subfieldSize=config.subfieldSize;
 
 fprintf('urpec is running...\n');
 
+% ########## Load pattern file ##########
+
 if isempty(config.file)
     %choose and load file
-    fprintf('Select your dxf file.\n')
-    [filename pathname]=uigetfile('*.dxf');
+    fprintf('Select your cad file.\n')
+    [filename, pathname]=uigetfile({'*.dxf';'*.mat'});
+    [pathname,filename,ext] = fileparts(fullfile(pathname,filename));
 else
     [pathname,filename,ext] = fileparts(config.file);
-    pathname=[pathname '\'];
-    filename=[filename ext];
+
 end
 
-[lwpolylines,lwpolylayers]=dxf2coord_20(pathname,filename);
-fields=struct();
-layerNum=str2num(cell2mat(lwpolylayers));
+pathname=[pathname '\'];
+filename=[filename ext];
 
-fprintf('dxf CAD file imported.\n')
+config=def(config,'outputDir',pathname);
+if config.outputDir(end)~='\'
+    config.outputDir=[config.outputDir '\'];
+end
+    
+if strmatch(ext,'.dxf')
+    [lwpolylines,lwpolylayers]=dxf2coord_20(pathname,filename);
+    %These are actually the layer names, not the numbers. 
+    %If they do not follow the convention, then default to layer 2 and
+    %fracturing.
+    for i=1:length(lwpolylayers)
+        if isempty(str2num(lwpolylayers{i}))
+            lwpolylayers{i}='2';
+        end
+    end
+    layerNum=str2num(cell2mat(lwpolylayers));
+end
+
+if strmatch(ext,'.mat')
+    d=load([pathname filename]);
+    layerNum=[d.polygons.layer];
+    lwpolylines=[ones(size(d.polygons(1).p,1),1).*1 d.polygons(1).p];
+    for i=2:length(d.polygons)
+        lwpolylines=[lwpolylines; [ones(size(d.polygons(i).p,1),1).*i d.polygons(i).p]];
+    end
+end
+
+fprintf('CAD file imported.\n')
 
 %splitting each set of points into its own object
 object_num=max(lwpolylines(:,1)); % number of polygons in CAD file
@@ -126,13 +154,19 @@ if object_num <= 1
 end
 
 %grouping objects of the same size together
-areas = cell(1, object_num);
-for ar = 1:object_num
-    curr_obj = objects{ar};
-    areas{ar} = polyarea(curr_obj(:,2), curr_obj(:,3));
+% areas = cell(1, object_num);
+% for ar = 1:object_num
+%     curr_obj = objects{ar};
+%     areas{ar} = polyarea(curr_obj(:,2), curr_obj(:,3));
+% end
+
+%defult to fracturing if the layer number extraction went bad. This can
+%happen with the wrong autcad version, for example.
+if length(layerNum)~=length(objects)
+    layerNum=ones(1,length(objects)).*2; 
 end
 
-display(['dxf CAD file analyzed.']);
+display(['CAD file analyzed.']);
 
 if length(objects)>1
     medall=vertcat(objects{1},objects{2});
@@ -219,6 +253,7 @@ if ~config.layer
     layerNum=layerNum.*0+1;
 end
 
+%TODO: load the fields file 
 layerNums=unique(layerNum);
 for i=1:length(layerNums)
     fields(i).polysbin=zeros(size(XP));
@@ -327,7 +362,6 @@ subplot(1,2,1);
 imagesc(yp,xp,polysbin);
 title('CAD pattern');
 set(gca,'YDir','norm');
-
 
 subplot(1,2,2);
 imagesc(yp,xp,pattern);
