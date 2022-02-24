@@ -1,8 +1,8 @@
-function [x,y,polyin] = fixPoly(x,y)
+function [x,y,polyin,bad] = fixPoly(x,y)
 %fixPoly tries to fix bad polygons by removing duplicate vertices and
 %simplifying the shape if possible.
 %
-% x and y are row vectors of the polygon vertices
+% x and y are vectors of the polygon vertices
 
 flipx=0; flipy=0;
 
@@ -22,15 +22,15 @@ warning('');
 %Get rid of duplicates before doing polyshape. This is an easy way
 %to fix some bad polygons.
 A=[x' y'];
-[~, ia]=unique(A,'rows');
+[C, ia,ic]=unique(A,'rows');
 ia=sort(ia);
-ia=[ia; 1];
-%A=A(ia,:);
-x=A(:,1)'; y=A(:,2)';
+ia=[ia; ];
+A=A(ia,:);
+xx=A(:,1)'; yy=A(:,2)';
 
 %try to make a nice polygon out of the coordinates. This will try
-%to simplify any strange shapes.
-polyin=polyshape(x,y);
+%to simplify any strange shapes and remove duplicates.
+polyin=polyshape(xx,yy);
 [warnMsg, warnId] = lastwarn;
 lastwarn('');
 %If polyshape gives a warning, it simpliied the shape. 
@@ -53,6 +53,9 @@ if flipy
 else
     y=polyin.Vertices(:,2)';   
 end
+
+x=x(~isnan(x));
+y=y(~isnan(y));
 
 
 end

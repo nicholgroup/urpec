@@ -12,7 +12,7 @@ function [fieldsFileName] = urpec_v3( config )
 % micron.
 %
 % The layer scheme is as follows. The names for all layers should be numbers.
-% Layers 1 and 2 of the input file will
+% Layers 1 and 2 of the input file willHW6_solutions
 % both be output to layer 1 of the output file. Layer 1 will not be
 % fractured, and layer 2 will be fractured. Layers 3 and 4 of the input
 % file will be output to layer 2 of the output filed, etc. If the polygons

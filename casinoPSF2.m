@@ -1,163 +1,146 @@
-function [  psf] = casinoPSF2(  )
-%casinoPSF extracts a point spread function from a Casino dataset. 
+function [psf] = casinoPSF2(  )
+%casinoPSF2 extracts a point spread function from a Casino dataset. 
 %
 %   Extracts a point spread function from a dataset generated using Casino.
 %   http://www.gel.usherbrooke.ca/casino/What.html
 %
-%   You should run your simulation and save the data. Open the datafile in
-%   excel and then save it as a .xlsx file. 
+%   Run the casino simulation and save the data as a .dat file
 %
-%   This function assumes that the top layer of your simulation is labeled
-%   'PMMA' and calculates home much energy is deposited in the PMMA as
-%   a function of position. You should simulate something like 10000
-%   electrons. The excel file should be approximately ~75MB.
-%   
-%   TODO:
-%   Add support for loading Casino files without intermediate excel step.
+%   This function assumes that the top layer of your simulation has the
+%   string 'MMA' in it. labeled and calculates the distribution of
+%   electron collisions as af unction of radial distance. 
+%   a function of position. You should simulate something like 2,000-10,000
+%   electrons. The dat file will be about 150-600 MB.
 
-%load file
-fprintf('Loading excel data file. This can take a while...');
-[filename pathname]=uigetfile('*.xlsx');
-[num txt raw]=xlsread([pathname filename]);
-fprintf('done.\n');
+
+[filename pathname]=uigetfile('*.dat');
+fID=fopen([pathname filename]);
 
 % Find the energy deposited in the pmma vs lateral position.
-fprintf('Counting electrons...');
+fprintf('Counting electrons\n');
 dr=1; %spacing in nanometers for the simulation
-rvals=(1:dr:10000);
+rvals=(1:dr:50000);
 evals=rvals.*0;
-evalsf=rvals.*0;
-evalsb=rvals.*0;
+nvals=rvals.*0;
 count=0; %counts the number of collisions in the pmma that were included in the loop.
-pc=0; %counts the number of times an electron was in the pmma.
-for i=1:length(raw)
-    if strmatch(raw{i,8},'PMMA')
-        pc=pc+1;
-        try
-            r=(raw{i,1}^2+raw{i,2}^2)^(0.5);
-            ind=round(r/dr)+1;
-            de=raw{i-1,7}-raw{i,7}; %energy deposted is difference in energy between successive collisions
-            if length(de)==1 %the file format is weird. Sometimes de is not in the expected format.
-                evals(ind)=evals(ind)+de;
-                count=count+1;
+xv=[];
+yv=[];
+maxE=0;
+lastLine=[];
 
-                if (raw{i,3}-raw{i-1,3})>0 %forward scatter
-                    evalsf(ind)=evalsf(ind)+de;
-                else
-                    evalsr(ind)=evalsr(ind)+de;
-                end
-            end
-        catch
-            %fprintf('fail \n');
-            %ind;
-        end
+cont=1;
+tic
+while cont
+    A=fgetl(fID);
+    
+    if A==-1 
+        cont=0;
+        break
     end
     
-    if strmatch(raw{i,2},'Trajectory')
-        nelec=raw{i,3};
+    skip=isempty(A);
+    if skip
+        continue
     end
+    
+    [aa,n]=sscanf(A,'%f %f %f %f %f %f %f %s');
+    
+    if n==8
+        try
+            de=lastLine(7)-aa(7);
+        catch
+            de=0;
+        end
+        
+        if ~isempty(regexp(A,'MMA')) %Only look at collisions in PMMA or MMA
+            xv=[xv aa(1)];
+            yv=[yv aa(2)]; 
+            r=(aa(1)^2+aa(2)^2)^(0.5);
+            ind=round(r/dr)+1;
+
+            if ind<length(rvals)
+                nvals(ind)=nvals(ind)+1; %just count collisions
+                evals(ind)=evals(ind)+de; %count energy
+            end
+            
+            count=count+1;
+        end
+        
+    end
+    
+    lastLine=aa;
+    
+    if count>0 & ~mod(count,1000)
+        fprintf('%d collisions \n',count);
+    end
+    
 end
-% pc
-% count
-fprintf('done.\n');
-fprintf('The average energy deposited per electron is %f keV. \n',sum(evals)/nelec);
+toc
+fclose(fID);
 
-%
-figure(333); clf; loglog(rvals,evals);
-figure(334); clf; loglog(rvals,evalsf);
-figure(335); clf; loglog(rvals,evalsb);
+r2=pi.*rvals.^2; %circle area
+aa=r2-[0 r2(1:end-1)];  %right area
 
+evals=evals./sum(evals); %normalize
+edensity=evals./aa; %convert to density, with units of 1/nm^2
 
-%Fit the data on a log log scale.
-fitfn=@(p,x) p(1)/(1+p(2)).*((1/(pi*p(3)^2)).*exp(-x.^2/p(3).^2)+p(2)/(pi*p(4)^2)*exp(-x.^2/p(4).^2));
+figure(444); clf; loglog(rvals,edensity,'o');
+fprintf('Click on forward scattering boundary \n');
+f=ginput(1);
 
-beta=[10000 .7 5 2000];
-
-% figure(333); hold on;
-% loglog(rvals,fitfn(beta,rvals));
-
-% Fit the psf
-%psf=1/(1+eta).*(1/(pi*alpha^2).*exp(-rpsf2./alpha.^2)+eta/(pi*beta^2).*exp(-rpsf2./beta.^2));
-%p(1) is amplitude
-%p(2) is eta
-%p(3) is alpha
-%p(4) is beta
-fitfn=@(p,x) log(p(1)/(1+p(2)).*((1/(pi*p(3)^2)).*exp(-(exp(x).^2)./p(3)^2)+p(2)/(pi*p(4)^2)*exp(-(exp(x).^2)./p(4)^2)));
-
-%Divide by R because we calculated evals effectively by integrating rings.
-ee=evals./rvals;
-
-%Detemrine eta and keep it fixed during the fit
-forwardRange=100; %We assume all forward scattering happens in less than 100 nm.
+%Determine the ratio of backward to forward scattering and keep it fixed during the fit
+forwardRange=f(1); 
 inds=(1:1:forwardRange/dr);
-f=sum(evals(inds))-sum(evals(inds(end)+inds)); %approximation of the forward scattered energy
+f=sum(evals(inds));%;-sum(evals(inds(end)+inds)); %approximation of the forward scattered energy, optionally trying to subtract a back-scattered background
 r=sum(evals(inds(end)+1:end)); %approximation of the back-scattered energy
-eta=r/f;
+et=r/f; %ratio of backscattered energy to forward energy
 
-%uncomment to keep an even density of points in logspace
-% ii=linspace(0,log10(rvals(end)),200);
-% ii=10.^(ii);
-% ii=round(ii/dr);
-% logKeep=zeros(1,length(rvals));
-% logKeep(ii)=1;
+fitfn=@(p,x) psf3(p,x);
+beta0=[1 4  1.1 et .1]; %parameters are [log10(alpha) log10(beta) log10(gamma) total backscattered ratio nu]
+mask=[1 1 1 0 1];
 
 logKeep=ones(1,length(rvals));
+logKeep(1:2)=0;
 
-y=log(ee);
+%Get rid of any points with no counts
+y=log10(edensity);
 reject=(y==-Inf);
 keep=~reject;
 keep=keep & logKeep;
 y=y(keep);
-x=log(rvals);
+x=log10(rvals);
 x=x(keep);
-beta0=[20000 eta 2 1448];
-beta=fitwrap('plinit plfit robust',x,y,beta0,fitfn,[1 0 1 1]);
-xlabel('log(range [nm])');
-ylabel('log(energy deposited per distance [kV/nm])');
-title('Data and fit');
 
+beta=fitwrap('plinit plfit ',x,y,beta0,fitfn,mask);
 beta=real(beta);
+
+a=10^beta(1);
+b=10^beta(2);
+g=10^beta(3);
+nu=beta(5);
+eta=et-nu;
+
+xlabel('log10(range [nm])');
+ylabel('log10(energy deposited [keV])');
+title(sprintf('${\\alpha}$=%3.3f nm, ${\\beta}$=%3.3f nm,  ${\\eta}$=%3.3f, ${\\gamma}$=%3.3f nm, ${\\nu}$=%3.3f',a,b,eta,g,nu),'interpreter','Latex');
+box on;
 
 psf=struct();
 
-psf.eta=beta(2); %ratio of backscattered energy to forward scattered energy
-psf.alpha=beta(3).*1e-3;  %forward scattering range, in units of microns
-psf.beta=beta(4).*1e-3;  %backward scattering range, in units of microns
-psf.range=5;
+psf.params=beta;
+psf.fitfn=fitfn;
+psf.beta0=beta0;
+psf.mask=mask;
 psf.x=x;
 psf.y=y;
-psf.beta0=beta0;
-psf.fitfn=fitfn;
-psf.mask=[1 0 1 1];
-descr=input('Enter a description, e.g., Si30kV \n','s');
+
+descr=input('Enter a description, e.g., Si30kV_500 \n','s');
 psf.descr=descr;
+psf.version=2; 
 
 outputFileName=['PSF' descr '.mat'];
 fprintf('Saving to %s',outputFileName);
 save(outputFileName,'psf');
-
-% Previously calculated PSF parameters
-
-% %GaAs 30 kV with 200 nm pmma:
-% eta=1.7
-% alpha=14 nm
-% beta=1.56 um
-% 
-% 
-% % GaAs 30 kV with 400 nm pmma
-% eta=1.5
-% alpha=28 nm
-% beta=1.74 um
-% 
-% % Si 30 kV with 200 nm pmma
-% eta=1
-% alpha=13 nm
-% beta=3.97 um
-% 
-% % Si 30 kV with 400 nm pmma
-% eta=0.9
-% alpha=40 nm
-% beta=4.19 um
 
 end
 

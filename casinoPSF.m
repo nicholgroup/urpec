@@ -49,12 +49,12 @@ for i=1:length(raw)
     end
 end
 % pc
-% count
+count
 fprintf('done.\n');
 fprintf('The average energy deposited per electron is %f keV. \n',sum(evals)/nelec);
 
 %
-%figure(333); clf; loglog(rvals,evals);
+%figure(333); clf; loglog(rvals,evals,'o');
 
 %Fit the data on a log log scale.
 fitfn=@(p,x) p(1)/(1+p(2)).*((1/(pi*p(3)^2)).*exp(-x.^2/p(3).^2)+p(2)/(pi*p(4)^2)*exp(-x.^2/p(4).^2));
