@@ -3,7 +3,7 @@ urpec is a matlab-based proximity-effect-correction function for electron beam l
 
 urpec generates a proximity-effect-corrected pattern file for electron beam lithography. The corrected file is created by deconvolving a point spread function from an input .dxf or .mat pattern file. The output file has different colors, each of which receive a different dose. This function assumes that one unit in the input pattern file is one micron. urpec will recognize all closed polylines in all layers. 
 
-urpec can be used with NPGS, and urpec automatically outputs a .dc2 file suitable for NPGS. Urpec can easily be adapted for use with other electron-beam lithography platforms, such as Elionix. Please contact us for more details about this.
+urpec can be used with NPGS and can output a .dc2 file suitable for NPGS. Urpec can easily be adapted for use with other electron-beam lithography platforms, such as Elionix. Please contact us for more details about this.
 
 To run urpec, download all files to a folder. Set your matlab path to this folder and run urpec_v4, optionally with arguments. See the documentation inside urpec for calling urpec with arguments. You can also run it from a script. This is useful for batch processing. See the script called run_urpec for more details on this and how to create an NPGS run file.
 
@@ -23,7 +23,7 @@ If you need a different PSF, you should download Casino, run a simulation, save 
 Casino can be found here:
 http://www.gel.usherbrooke.ca/casino/What.html
 
-An example Casino simulation is included in the "Examples" directory. Open this file in Casino, modify your sample and microscope as necessary, and run the simulation. It should already have the necessary settings enabled, but you need to change the number of electrons. Go to Setting>Set Up Microscope, and change the number of electrons to 2000. Also go to Settings>Run Time Options, and change the number of displayed trajectories fo 2000. To change the sample go to Settings>Modify Sample, and change the sample as needed. Note that the top layer of your sample should be called PMMA or MMA in order for the analysis function to work. When the simulation has finished, run casinoPSF2, which extracts point spread function data.
+An example Casino simulation is included in the "Examples" directory. Open this file in Casino, modify your sample and microscope as necessary, and run the simulation. It should already have the necessary settings enabled, but you need to change the number of electrons. Go to Setting>Set Up Microscope, and change the number of electrons to >2000. Also go to Settings>Run Time Options, and change the number of displayed trajectories to the same number. To change the sample go to Settings>Modify Sample, and change the sample as needed. Note that the top layer of your sample should be called PMMA or MMA in order for the analysis function to work. When the simulation has finished, run casinoPSF2, which extracts point spread function data.
 
 See the script run_urpec for examples on how to run urpec_v4 and how to make run files.
 
