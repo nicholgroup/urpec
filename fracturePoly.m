@@ -34,8 +34,16 @@ poly(1).good=0;
 poly(1).layer=ceil(inpoly.layer/2);
 [mv,ind]=min(abs(dvals-nanmean(shotMapNew(:))));
 poly(1).dose=ind; %dose color
+poly(1).sizeX=max(poly(1).x)-min(poly(1).x);
+poly(1).sizeY=max(poly(1).y)-min(poly(1).y);
+
+%stash this in case the fracturing goes wrong and we need to triangulate
+%the original.
+poly_orig=poly;
 
 allGood=0;
+
+really_bad=0;
 
 nPolys=1;
 iter=0;
@@ -88,7 +96,7 @@ while ~allGood
             canFracX=(poly(i).sizeX/fracNum>minSize);
             canFracY=(poly(i).sizeY/fracNum>minSize);
             
-            %Actually do the fracturing
+            % ########## fracturing ##########
             if canFracX || canFracY
                 polys2Add=DIVIDEXY(poly(i),canFracX*shouldFracX*(fracNum-1)+1,canFracY*shouldFracY*(fracNum-1)+1);
                 polys2Add=polys2Add(:);
@@ -96,7 +104,9 @@ while ~allGood
                 polys2Add={};
             end
             
-            %Check for empty polys and polys of zero area and get rid of them
+            % ########## check fractured polys ##########
+            
+            %Check for empty polys and polys of zero area 
             for j=(length(polys2Add):-1:1)
                 
                 if isempty(polys2Add{j}) || any(size(polys2Add{j}.x)~=size(polys2Add{j}.y))
@@ -111,42 +121,72 @@ while ~allGood
                 
             end
             
-            %go through the polys again and try to clean them up
+            %Check that the area of the fractured polygons adds up to the
+            %original area
+            bad=0;
+            a1=polyarea(poly(i).x,poly(i).y);
+            a2=0;
+            for j=(1:1:length(polys2Add))
+                a2=a2+polyarea(polys2Add{j}.x,polys2Add{j}.y);
+            end
+            
+            if ~(round(a1,6)==round(a2,6))
+                bad=1;
+            end
+            
+            
+            % ########## clean up fractured polys ##########
             for j=(length(polys2Add):-1:1)
                 
-                %Clean up the fractured polys here.
-                bad=0;
-                %[polys2Add{j}.x,polys2Add{j}.y]=fixPoly(polys2Add{j}.x,polys2Add{j}.y);
-                
-                
+                %Clean up the fractured polys here.                              
                 try
                     [polys2Add{j}.x,polys2Add{j}.y]=fixPoly(polys2Add{j}.x,polys2Add{j}.y);
                 catch e
                     %fixPoly throws and error if the polygon is so messed
                     %up that it can't fix it. In this case, we should
                     %triangulate the parent polygon so we can continue.
-                    fprintf('Bad fractured polygon found. Triangulating. \n')
                     bad=1;
+                end
+                
+                if bad
+                    
+                    fprintf('Bad fractured polygon found. Triangulating. \n')
                     polys2Add={};
                     polyin=polyshape(poly(i).x,poly(i).y);
-                    %fracture it into triangles
-                    T = triangulation(polyin);
-                    CL=T.ConnectivityList;
-                    for tt=1:size(T.ConnectivityList,1)
-%                         xnew=[poly(i).x(CL(tt,:))' poly(i).x(CL(tt,1))];
-%                         ynew=[poly(i).y(CL(tt,:))' poly(i).y(CL(tt,1))];   
-                        xnew=poly(i).x(CL(tt,:)); xnew=xnew(:); %convert to column vector
-                        ynew=poly(i).y(CL(tt,:)); ynew=ynew(:); %convert to column vector
-                        [polys2Add{tt}.x,polys2Add{tt}.y]=fixPoly(xnew,ynew);
+                    try
+                        %fracture it into triangles
+                        T = triangulation(polyin);
+                        CL=T.ConnectivityList;
+                        for tt=1:size(T.ConnectivityList,1)
+                            %                         xnew=[poly(i).x(CL(tt,:))' poly(i).x(CL(tt,1))];
+                            %                         ynew=[poly(i).y(CL(tt,:))' poly(i).y(CL(tt,1))];
+                            xnew=poly(i).x(CL(tt,:)); xnew=xnew(:); %convert to column vector
+                            ynew=poly(i).y(CL(tt,:)); ynew=ynew(:); %convert to column vector
+                            [polys2Add{tt}.x,polys2Add{tt}.y]=fixPoly(xnew,ynew);
+                        end
+                    catch e %if the triangulation goes wrong, game over. Fracture the parent polygon and start over.
+                        polys2Add={};
+                        fprintf('Really bad fractured polygon found. Triangulating the original. \n');
+                        polyin=polyshape(poly_orig.x,poly_orig.y);
+                        %fracture it into triangles
+                        T = triangulation(polyin);
+                        CL=T.ConnectivityList;
+                        for tt=1:size(T.ConnectivityList,1)
+                            xnew=poly_orig.x(CL(tt,:)); xnew=xnew(:); %convert to column vector
+                            ynew=poly_orig.y(CL(tt,:)); ynew=ynew(:); %convert to column vector
+                            [polys2Add{tt}.x,polys2Add{tt}.y]=fixPoly(xnew,ynew);
+                        end
+                        %Go back to the original and restart.
+                        poly=poly_orig;
+                        iter=1;
+                        i=1;
                     end
                     
-                end
-                
-                %Something wrong happened, and we had to triangulate.
-                if bad
+                    %exit out of for loop if something wrong happened.
                     break
+                    
                 end
-                
+                                
             end
             
             %If after all this we didn't actually fracture anything,
@@ -158,8 +198,7 @@ while ~allGood
             
             length(polys2Add);
             
-            %Go through the new polygons and find out if
-            %they're good.
+            % ########## check does variation ##########
             for j=1:length(polys2Add)
                 polys2Add{j}.x= polys2Add{j}.x';
                 polys2Add{j}.y= polys2Add{j}.y';
@@ -185,7 +224,7 @@ while ~allGood
                 end
             end
             
-            %Add the new polygons back to the total list of polygons
+            % ########## add fractured polys to the list ##########
             if ~isempty(polys2Add)
                 if iter==1
                     for j=1:length(polys2Add)

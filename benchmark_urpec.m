@@ -26,7 +26,7 @@ urpec_v4(struct('file',[pathnameP filenameP],...
 
 %% Fracturing, default
 psf='PSFSi90SiO230kV200.mat';
-filenameP='2D.dxf';
+filenameP='2D_v2.dxf';
 pathnameP='Examples\';
 
 urpec_v4(struct('file',[pathnameP filenameP],...
@@ -55,8 +55,8 @@ urpec_v4(struct('file',[pathnameP filenameP],...
 %% Spiral tests
 psf='PSFSiNb125_950_50.mat';
 %filenameP='spiral_nice.dxf';
-filenameP='spiral_nice.mat';
-%filenameP='spiral_bad.mat';
+%filenameP='spiral_nice.mat';
+filenameP='spiral_bad.mat';
 
 pathnameP='Examples\';
 
