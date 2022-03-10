@@ -60,7 +60,7 @@ function [fieldsFileName] = urpec_v4( config )
 %   outputDir: the directory in which to save the output files.
 %
 %   savedxf: boolean variable indicating whether or not to save output dxf.
-%   Default is true, autocad is a nice way to view complex files.
+%   Default is false, althought autocad is a nice way to view complex files.
 %
 %   savedc2: boolean variable indicating whether or not to save output dc2.
 %   Default is false. If you are using NPGS, set this to true.
@@ -122,7 +122,7 @@ config=def(config,'psfFile',[]);
 config=def(config,'fracNum',3);
 config=def(config,'fracSize',4);
 config=def(config,'padLen',5);
-config=def(config,'savedxf',true);
+config=def(config,'savedxf',false);
 config=def(config,'savedc2',false);
 config=def(config,'savedose',false);
 config=def(config,'npgs',false);
@@ -337,11 +337,16 @@ fprintf('There are %2.0e points. \n',totPoints);
 
 %Make sure the grid size is appropriate
 if config.autoRes && (totPoints<.8*config.targetPoints || totPoints>1.2*config.targetPoints)
-    expand=ceil(log2(sqrt(totPoints/config.targetPoints)));
-    dx=dx*2^(expand);
-%     expand=sqrt(totPoints/config.targetPoints);
-%     dx=dx*(expand);
-%     dx=round(dx,2);
+    %The following way of changing the resolution will yield a step size
+    %that is a power of 2 different that the originally specified step
+    %size.
+%     expand=ceil(log2(sqrt(totPoints/config.targetPoints)));
+%     dx=dx*2^(expand);
+    %This way of changing the resolution will get as close as possible to
+    %the target.
+    expand=sqrt(totPoints/config.targetPoints);
+    dx=dx*(expand);
+    dx=round(dx,2);
     fprintf('Resetting the resolution to %3.4f.\n',dx);
     padSize=ceil(5/dx).*dx;
     padPoints=padSize/dx;
