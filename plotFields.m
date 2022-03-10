@@ -1,6 +1,8 @@
 function [] = plotFields(filename)
 %plotFields will plot the shapes in a fields file along with those shapes fractured into shapes with four or fewer sides.
 
+warning('off');
+
 ctab={[0 0 175] [0 0 255] [0 63 255] [0 127 255] [0 191 255] [15 255 239] [79 255 175] [143 255 111] [207 255 047] [255 223 0] [255 159 0] [255 095 0] [255 31 0] [207 0 0] [143 0 0] };
 
 if ~exist('filename','var')
@@ -35,13 +37,15 @@ polygons=fields.polygons;
 figure(1); clf; hold on;
 colormap(cmap);
 
-X=[];
-Y=[];
-C=[];
+plots=struct();
+plots.X=[];
+plots.Y=[];
+plots(2:length(ctab))=plots(1);
 
 for ipoly=1:length(polygons)
     
     p=polygons(ipoly).p;
+    dose=polygons(ipoly).dose;
     
     x=polygons(ipoly).p(:,1);
     y=polygons(ipoly).p(:,2);
@@ -63,27 +67,27 @@ for ipoly=1:length(polygons)
             xnew=[x(CL(itri,:)); x(CL(itri,1))];
             ynew=[y(CL(itri,:)); y(CL(itri,1))];
             
-            plot(xnew,ynew,'color',polygons(ipoly).color./255);
-            X=[X; xnew(:); NaN];
-            Y=[Y; ynew(:); NaN];
-            C=[C; repmat(polygons(ipoly).color./255,[length(xnew)+1,1])];
+            %plot(xnew,ynew,'color',polygons(ipoly).color./255);
+            %Manipulating the plot is faster if we combine as much as
+            %possible into one line.
+            plots(dose).X=[plots(dose).X; xnew(:); NaN];
+            plots(dose).Y=[plots(dose).Y; ynew(:); NaN];
         end
     else
-        plot([x; x(1)],[y; y(1)],'color',polygons(ipoly).color./255);
-        X=[X; x; x(1); NaN];
-        Y=[Y; y; y(1); NaN];
-        C=[C; repmat(polygons(ipoly).color./255,[length(x)+2,1])];
+        %plot([x; x(1)],[y; y(1)],'color',polygons(ipoly).color./255);
+        %Manipulating the plot is faster if we combine as much as
+        %possible into one line.
+        plots(dose).X=[plots(dose).X; x; x(1); NaN];
+        plots(dose).Y=[plots(dose).Y; y; y(1); NaN];
 
     end
     
 end
 
-%potentially faster way to plot? This seems not to work.
-% xseg = [X(1:end-1),X(2:end)];
-% yseg = [Y(1:end-1),Y(2:end)];
-% C=C(1:end-1,:);
-% h=plot(xseg',yseg');
-% set(h, {'Color'}, mat2cell(C,ones(size(xseg,1),1),3));
+%Plot each color as one line.
+for ip=1:length(plots)
+    plot(plots(ip).X,plots(ip).Y,'color',ctab{ip}./255)
+end
 
 %Add a colorbar to the plot
 set(gca, 'CLim', [fields.dvalsAct(1), fields.dvalsAct(end)]);
@@ -92,6 +96,7 @@ xlabel('x (microns)');
 ylabel('y (microns)');
 box on;
     
-cd(curdir)
+cd(curdir);
+
 end
 
