@@ -35,6 +35,10 @@ polygons=fields.polygons;
 figure(1); clf; hold on;
 colormap(cmap);
 
+X=[];
+Y=[];
+C=[];
+
 for ipoly=1:length(polygons)
     
     p=polygons(ipoly).p;
@@ -49,9 +53,6 @@ for ipoly=1:length(polygons)
     if isempty(x)
         continue
     end
-        
-    %subplot(1,2,1);
-    plot([x; x(1)],[y; y(1)],'color',polygons(ipoly).color./255)
     
     if ~any(nvertices==[3,4])
         %fprintf('Unsupported polygon size. Fracturing...\n');
@@ -61,15 +62,28 @@ for ipoly=1:length(polygons)
         for itri=1:size(T.ConnectivityList,1)
             xnew=[x(CL(itri,:)); x(CL(itri,1))];
             ynew=[y(CL(itri,:)); y(CL(itri,1))];
-            %subplot(1,2,1); hold on;
+            
             plot(xnew,ynew,'color',polygons(ipoly).color./255);
-%             subplot(1,2,2); hold on;
-%             plot(xnew,ynew,'color','r');
+            X=[X; xnew(:); NaN];
+            Y=[Y; ynew(:); NaN];
+            C=[C; repmat(polygons(ipoly).color./255,[length(xnew)+1,1])];
         end
+    else
+        plot([x; x(1)],[y; y(1)],'color',polygons(ipoly).color./255);
+        X=[X; x; x(1); NaN];
+        Y=[Y; y; y(1); NaN];
+        C=[C; repmat(polygons(ipoly).color./255,[length(x)+2,1])];
+
     end
     
-    
 end
+
+%potentially faster way to plot? This seems not to work.
+% xseg = [X(1:end-1),X(2:end)];
+% yseg = [Y(1:end-1),Y(2:end)];
+% C=C(1:end-1,:);
+% h=plot(xseg',yseg');
+% set(h, {'Color'}, mat2cell(C,ones(size(xseg,1),1),3));
 
 %Add a colorbar to the plot
 set(gca, 'CLim', [fields.dvalsAct(1), fields.dvalsAct(end)]);
