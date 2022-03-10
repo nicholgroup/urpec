@@ -5,6 +5,18 @@ pecdir=fileparts(which('urpec'));
 curdir=pwd;
 cd(pecdir);
 
+
+%% Terrible, non-convex polygon
+filenameP='2d_v2.dxf';
+pathnameP='Examples\';
+
+fieldsFile=urpec_v4(struct('file',[pathnameP filenameP],...
+    'autoRes',true,...
+    'psfFile','PSFSi90SiO250kV200.mat'));
+
+%Display the pattern with doses
+plotFields(fieldsFile);
+
 %% Easy test, default, but the dxf file has duplicate points for each shape.
 % There are no concave polygons in this pattern.
 psf='PSFLiNbO3_30kV_200.mat';
@@ -25,11 +37,12 @@ urpec_v4(struct('file',[pathnameP filenameP],...
 
 
 %% Fracturing, default
-psf='PSFSi90SiO230kV200.mat';
+psf='PSFSi90SiO250kV200.mat';
 filenameP='2D_v2.dxf';
 pathnameP='Examples\';
 
 urpec_v4(struct('file',[pathnameP filenameP],...
+    'dx',1,...
     'psfFile',psf));
 
 %% Regular, wrong layer names

@@ -339,6 +339,9 @@ fprintf('There are %2.0e points. \n',totPoints);
 if config.autoRes && (totPoints<.8*config.targetPoints || totPoints>1.2*config.targetPoints)
     expand=ceil(log2(sqrt(totPoints/config.targetPoints)));
     dx=dx*2^(expand);
+%     expand=sqrt(totPoints/config.targetPoints);
+%     dx=dx*(expand);
+%     dx=round(dx,2);
     fprintf('Resetting the resolution to %3.4f.\n',dx);
     padSize=ceil(5/dx).*dx;
     padPoints=padSize/dx;
@@ -632,7 +635,7 @@ for ip = 1:length(polygons)
             subField(ip).poly(1).dose=ind;
             subField(ip).poly(1).layer=ceil(polygons(ip).layer/2);
         else %Need to fracture. In the future, this should be made into a function if increased complexity is desired.
-            subField(ip).poly=fracturePoly(config,shotMapNew,xinds,yinds,XPold,YPold,polygons(ip));
+            subField(ip).poly=fracturePoly(config,shotMapNew,xinds,yinds,XPold,YPold,polygons(ip),ctab);
             subField(ip).poly(1).layer=ceil(polygons(ip).layer/2);
         end
             
