@@ -78,7 +78,7 @@ function [fieldsFileName] = urpec_v4( config )
 %   true.
 %
 %   triangulate: boolean variable indicating whether or not to triangulate
-%   concave polygons. Enabling this generates lots of triangles, but all of
+%   non-convex polygons. Enabling this generates lots of triangles, but all of
 %   the polygons will be good. Default is false.
 %
 % call this function without any arguments, or via
@@ -259,7 +259,7 @@ for ip=1:length(polygons)
     yv=[yv; polygons(ip).p(:,2)];
 end
 
-%Check for convexity and triangulate concave polygons if needed
+%Check for convexity and triangulate non-convex polygons if needed
 polygonsTmp=struct();
 
 for fn = fieldnames(polygons)'
@@ -274,7 +274,7 @@ for ip = 1:length(polygons)
 
     isConvex = checkConvex(p(:,1)',p(:,2)');
     if ~isConvex && fracture
-        fprintf('Concave polygon to be fractured found. \n');
+        fprintf('Non-convex polygon to be fractured found. \n');
         x=p(:,1)';
         y=p(:,2)';
         

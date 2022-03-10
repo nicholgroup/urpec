@@ -16,8 +16,6 @@ if size(y,1)>1
     flipy=1;
 end
 
-warning('');
-
 %Clean up the shape.
 %Get rid of duplicates before doing polyshape. This is an easy way
 %to fix some bad polygons.
@@ -56,7 +54,6 @@ end
 
 x=x(~isnan(x));
 y=y(~isnan(y));
-
 
 end
 

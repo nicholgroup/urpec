@@ -10,6 +10,9 @@ function [poly] = fracturePoly(config,shotMapNew,xinds,yinds,XPold,YPold,inpoly)
 % 
 % poly is an output struct array of polygons.
 %
+
+warning('off'); %turn off warnings from polyshape.
+
 fracDebug=0;
 
 minSize=config.dx*config.fracSize; %Smallest eventual polygon size
@@ -198,7 +201,7 @@ while ~allGood
             
             length(polys2Add);
             
-            % ########## check does variation ##########
+            % ########## check dose variation ##########
             for j=1:length(polys2Add)
                 polys2Add{j}.x= polys2Add{j}.x';
                 polys2Add{j}.y= polys2Add{j}.y';
@@ -260,7 +263,7 @@ while ~allGood
     
 end
 
-
+warning('on');
 
 end
 
