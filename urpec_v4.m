@@ -140,7 +140,7 @@ ctab={[0 0 175] [0 0 255] [0 63 255] [0 127 255] [0 191 255] [15 255 239] [79 25
 
 %For other dose configurations, make a jet-like color map.
 ncolors=length(config.dvals);
-cc=jet;
+cc=jet(256);
 dc=256/ncolors;
 if ncolors~=15
     ctab={};
@@ -266,6 +266,7 @@ for fn = fieldnames(polygons)'
    polygonsTmp.(fn{1}) = [];
 end
 
+nc=0;
 for ip = 1:length(polygons)
        
     p=polygons(ip).p; %p(:,2:3);
@@ -274,7 +275,8 @@ for ip = 1:length(polygons)
 
     isConvex = checkConvex(p(:,1)',p(:,2)');
     if ~isConvex && fracture
-        fprintf('Non-convex polygon to be fractured found. \n');
+        %fprintf('Non-convex polygon to be fractured found. \n');
+        nc=nc+1;
         x=p(:,1)';
         y=p(:,2)';
         
@@ -299,6 +301,8 @@ for ip = 1:length(polygons)
     end
             
 end
+fprintf('Found %d non-convex polygons to be fractured. \n',nc);
+
 polygons=polygonsTmp;
 polygons=polygons(2:end); %We initialized it with an empty element.
 
@@ -347,6 +351,7 @@ if config.autoRes && (totPoints<.8*config.targetPoints || totPoints>1.2*config.t
     expand=sqrt(totPoints/config.targetPoints);
     dx=dx*(expand);
     dx=round(dx,2);
+    config.dx=dx; %very important for fracturing.
     fprintf('Resetting the resolution to %3.4f.\n',dx);
     padSize=ceil(5/dx).*dx;
     padPoints=padSize/dx;
@@ -591,6 +596,7 @@ subField=struct();
 nPolys2Frac=sum(~mod([polygons.layer],2));
 nPolysNot2Frac=sum(mod([polygons.layer],2));
 progressbar(sprintf('Fracturing/Averaging %d/%d',nPolys2Frac,nPolysNot2Frac));
+triCount=0;
 for ip = 1:length(polygons)
     progressbar(ip/length(polygons));
     
@@ -640,8 +646,9 @@ for ip = 1:length(polygons)
             subField(ip).poly(1).dose=ind;
             subField(ip).poly(1).layer=ceil(polygons(ip).layer/2);
         else %Need to fracture. In the future, this should be made into a function if increased complexity is desired.
-            subField(ip).poly=fracturePoly(config,shotMapNew,xinds,yinds,XPold,YPold,polygons(ip),ctab);
+            [subField(ip).poly,tc]=fracturePoly(config,shotMapNew,xinds,yinds,XPold,YPold,polygons(ip),ctab);
             subField(ip).poly(1).layer=ceil(polygons(ip).layer/2);
+            triCount=triCount+tc;
         end
             
     else %no fracturing        
@@ -653,6 +660,8 @@ for ip = 1:length(polygons)
     end
 
 end
+
+fprintf('Triangulated %d polygons. \n',triCount);
 
 dvalsAct=dvals;
 

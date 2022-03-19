@@ -58,14 +58,17 @@ for ipoly=1:length(polygons)
         continue
     end
     
-    if ~any(nvertices==[3,4])
-        %fprintf('Unsupported polygon size. Fracturing...\n');
-        T = triangulation(polyin);
+    if ~any(nvertices==[3,4]) %Need to fracture the shape
         
-        CL=T.ConnectivityList;
-        for itri=1:size(T.ConnectivityList,1)
-            xnew=[x(CL(itri,:)); x(CL(itri,1))];
-            ynew=[y(CL(itri,:)); y(CL(itri,1))];
+        parent=struct;
+        parent.x=x;
+        parent.y=y;
+        
+        polys=divideAndTriangulatePoly(parent);
+        
+        for ip=1:length(polys)
+            xnew=[polys{ip}.x(:); polys{ip}.x(1)];
+            ynew=[polys{ip}.y(:); polys{ip}.y(1)];
             
             %plot(xnew,ynew,'color',polygons(ipoly).color./255);
             %Manipulating the plot is faster if we combine as much as
@@ -73,6 +76,8 @@ for ipoly=1:length(polygons)
             plots(dose).X=[plots(dose).X; xnew(:); NaN];
             plots(dose).Y=[plots(dose).Y; ynew(:); NaN];
         end
+
+
     else
         %plot([x; x(1)],[y; y(1)],'color',polygons(ipoly).color./255);
         %Manipulating the plot is faster if we combine as much as
