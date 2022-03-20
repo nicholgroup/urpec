@@ -1,4 +1,4 @@
-function [polys,bad] = checkPolys(parent,polys)
+function [polys,bad] = checkPolys(polys,parent)
 %CHECKPOLYS checks fractured polygons.
 %
 % [polys,bad] = CHECKPOLYS(parent,polys) checks a cell array of fracture
@@ -23,7 +23,7 @@ end
 
 %Check that the area of the fractured polygons adds up to the
 %original area
-bad=checkArea(parent,polys);
+bad=checkArea(polys,parent);
 
 end
 

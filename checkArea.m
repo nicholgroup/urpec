@@ -1,4 +1,4 @@
-function [bad] = checkArea(parent,polys)
+function [bad] = checkArea(polys,parent)
 %CHECKAREA checks that the area of a polygon is equal to the area of the fractured polygons
 %
 % CHECKAREA computes the area of a polygon (parentPoly) and adds the areas of the

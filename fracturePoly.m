@@ -115,7 +115,7 @@ while ~allGood
             
             % ########## check fractured polys #########   
             bad=0;
-            [polys2Add,bb]=checkPolys(poly(i),polys2Add);
+            [polys2Add,bb]=checkPolys(polys2Add,poly(i));
             if bb 
                 bad=1; 
             end
@@ -137,7 +137,7 @@ while ~allGood
             
             %Sometimes, fixPoly will not throw an error, but the polygons
             %are messed up. Check their areas again.
-            [polys2Add,bb]=checkPolys(poly(i),polys2Add);
+            [polys2Add,bb]=checkPolys(polys2Add,poly(i));
             if bb 
                 bad=1; 
             end
@@ -148,7 +148,7 @@ while ~allGood
                 polyin=polyshape(poly(i).x,poly(i).y);
                 try                   
                     polys2Add=triangulatePoly(poly(i));
-                    [polys2Add,bad]=checkPolys(poly(i),polys2Add);
+                    [polys2Add,bad]=checkPolys(polys2Add,poly(i));
                     if bad
                         error('');
                     end
@@ -161,7 +161,7 @@ while ~allGood
                     %fprintf('Really bad fractured polygon found. Triangulating the original. \n');
                     
                     polys2Add=triangulatePoly(poly_orig);
-                    [polys2Add,bad]=checkPolys(poly(i),polys2Add);
+                    [polys2Add,bad]=checkPolys(polys2Add, poly_orig);
                     polys2Add=fixPolys(polys2Add);
                     
                     triCount=triCount+1;

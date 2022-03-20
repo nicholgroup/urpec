@@ -11,7 +11,7 @@ if length(parent.x>10)
     ndiv=round(length(parent.x)/4);
     polys=DIVIDEXY(parent,ndiv,ndiv);
     polys=polys(:);
-    [polys,bad]=checkPolys(parent,polys);
+    [polys,bad]=checkPolys(polys,parent);
     polys=fixPolys(polys);
     
     %Go through the resulting polygons and triangulate if needed.
@@ -19,9 +19,9 @@ if length(parent.x>10)
     for ipp=1:length(polys)
         if length(polys{ipp}.x)>4
             pp=triangulatePoly(polys{ipp});
-            [pp,bad]=checkPolys(polys{ipp},pp);
+            [pp,bad]=checkPolys(pp,polys{ipp});
             pp=fixPolys(pp);
-            [pp,bad]=checkPolys(polys{ipp},pp);
+            [pp,bad]=checkPolys(pp,polys{ipp});
             polys2=[polys2 pp];
         else
             polys2=[polys2 polys(ipp)];
@@ -30,9 +30,9 @@ if length(parent.x>10)
     polys=polys2;
 else %not so many vertices, so just triangulate
     polys=triangulatePoly(parent);
-    [polys,bad]=checkPolys(parent,polys);
+    [polys,bad]=checkPolys(polys,parent);
     polys=fixPolys(polys);
-    [pp,bad]=checkPolys(polys{ipp},pp);
+    [polys,bad]=checkPolys(polys,parent);
 
 end
 

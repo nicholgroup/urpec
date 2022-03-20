@@ -1,10 +1,10 @@
 function [polys] = triangulatePoly(parent)
 %triangulatePoly fractures a polygon into triangles.
 %   
-%[out] = triangulatePoly(poly) gives a cell array of polygons (out),
-%where out{i}.x and out{i}.y are column vectors specifying the points of
-%the new polygons. The input polygon (poly) is a struct with fields x and
-%y, which are column vectors of the polygons.
+%[out] = triangulatePoly(poly) gives a cell array of polygons (out), where
+%out{i}.x and out{i}.y are column vectors specifying the points of the new
+%polygons. The input polygon (parant) is a struct with fields x
+%and y, which are column vectors of the polygons.
 
 %First, make a nice polygon.
 polyin=polyshape(parent.x,parent.y);

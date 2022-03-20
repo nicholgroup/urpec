@@ -266,7 +266,7 @@ for fn = fieldnames(polygons)'
    polygonsTmp.(fn{1}) = [];
 end
 
-nc=0;
+nc=0; %counter for number of non-convex polygons
 for ip = 1:length(polygons)
        
     p=polygons(ip).p; %p(:,2:3);
@@ -274,23 +274,27 @@ for ip = 1:length(polygons)
     fracture=~mod(polygons(ip).layer,2);
 
     isConvex = checkConvex(p(:,1)',p(:,2)');
-    if ~isConvex && fracture
+    if ~isConvex && fracture 
         %fprintf('Non-convex polygon to be fractured found. \n');
         nc=nc+1;
         x=p(:,1)';
         y=p(:,2)';
         
         if config.triangulate
-            polyin=polyshape(x,y);
+            %polyin=polyshape(x,y);
             %fracture it into triangles
-            T = triangulation(polyin);
-            %triplot(T);
-            CL=T.ConnectivityList;
-            for tt=1:size(T.ConnectivityList,1)
-                xnew=[x(CL(tt,:)) x(CL(tt,1))];
-                ynew=[y(CL(tt,:)) y(CL(tt,1))];
+            parent=struct();
+            parent.x=x;
+            parent.y=y;
+    
+            T=triangulatePoly(parent);
+            T=checkPolys(T,parent);
+            T=fixPolys(T);
+            T=checkPolys(T,parent);
+    
+            for tt=1:length(T)
                 polygonsTmp(end+1)=polygons(ip);
-                polygonsTmp(end).p=[xnew' ynew']; %convert to column vectors.
+                polygonsTmp(end).p=[T{tt}.x(:) T{tt}.y(:)]; %convert to column vectors.
             end
         else
             polygonsTmp(end+1)=polygons(ip);
