@@ -9,7 +9,7 @@ function [polys,bad] = checkPolys(polys,parent)
 
 for j=(length(polys):-1:1)
     
-    if isempty(polys{j}) || any(size(polys{j}.x)~=size(polys{j}.y))
+    if isempty(polys{j}) || any(size(polys{j}.x)~=size(polys{j}.y)) || any(size(polys{j}.x)==0) 
         polys(j)=[];
     end
     
