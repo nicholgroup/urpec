@@ -24,7 +24,7 @@ fracNum=config.fracNum; %number of times to fracture each polygon each iteration
 dvals=config.dvals;
 dx=config.dx;
 dy=dx; %This is unfortunate. Fixme. 
-maxIter=5; %maximum number of fracturing iterations
+maxIter=10; %maximum number of fracturing iterations
 
 %First figure out the variation in dose across the polygon
 maxDose=max(shotMapNew(:));
@@ -82,14 +82,15 @@ while ~allGood
     i=1;
     while i<=nPolys
         i;
+        
         if ~poly(i).good
             [xinds,yinds]=shrinkArray(xpold,ypold,[poly(i).x(:) poly(i).y]);
             SMN=shotMapNew(yinds,xinds);
             xpnew=xpold(xinds);
             ypnew=ypold(yinds);
                    
-            poly(i).sizeX=max(poly(i).x)-min(poly(i).x);
-            poly(i).sizeY=max(poly(i).y)-min(poly(i).y);
+            poly(i).sizeX=max(poly(i).x(:))-min(poly(i).x(:));
+            poly(i).sizeY=max(poly(i).y(:))-min(poly(i).y(:));
                          
             x=round((poly(i).x-xpnew(1))/(xpnew(2)-xpnew(1))); 
             y=round((poly(i).y-ypnew(1))/(ypnew(2)-ypnew(1))); 
@@ -107,12 +108,6 @@ while ~allGood
 %             xdiff=max(xline)-min(xline);
 %             ydiff=max(yline)-min(yline);
             
-            if fracDebug
-                figure(778); clf; imagesc(xpnew,ypnew,sm);
-                set(gca,'YDir','norm');
-                title(sprintf('xdiff=%2.2f, ydiff=%2.2f',xdiff,ydiff));
-            end
-            
             %shouldFracX=(xdiff>dDose/(2+iter*.5));
             shouldFracX=(xdiff>dDose);
 
@@ -126,13 +121,20 @@ while ~allGood
             if isempty(shouldFracY)
                 shouldFracY=0;
             end
-            canFracX=(poly(i).sizeX/fracNum>minSize);
-            canFracY=(poly(i).sizeY/fracNum>minSize);
+            canFracX=((poly(i).sizeX/fracNum)>(minSize));
+            canFracY=((poly(i).sizeY/fracNum)>(minSize));
             
             %If we can't fracture anymore, call it good.
             if (~canFracX && ~canFracY)
                 poly(i).good=1;
             end
+            
+            if fracDebug
+                figure(778); clf; imagesc(xpnew,ypnew,sm);
+                set(gca,'YDir','norm');
+                title(sprintf('poly %d, xdiff=%2.2f, ydiff=%2.2f, %d, %d, %d, %d, %d, %d',i,xdiff,ydiff,poly(i).sizeX,poly(i).sizeY,canFracX,canFracY,shouldFracX,shouldFracY));
+            end
+            
             
             % ########## fracturing ##########
             if canFracX || canFracY
@@ -148,7 +150,7 @@ while ~allGood
             % ########## check fractured polys #########   
             bad=0;
             [polys2Add,bb]=checkPolys(polys2Add,poly(i));
-            if bb 
+            if bb & ~isempty(polys2Add)
                 bad=1; 
             end
                      
@@ -162,11 +164,20 @@ while ~allGood
             %Sometimes, fixPoly will not throw an error, but the polygons
             %are messed up. Check their areas again.
             [polys2Add,bb]=checkPolys(polys2Add,poly(i));
-            if bb 
+            if bb & ~isempty(polys2Add)
                 bad=1; 
             end
-           
-            if bad              
+                      
+            if bad   
+                
+                if fracDebug
+                    figure(779); clf; hold on;
+                    for ip=1:length(polys2Add)
+                        plot(polys2Add{ip}.x,polys2Add{ip}.y);
+                    end
+                    drawnow;
+                end
+                
                 %fprintf('Bad fractured polygon found. Triangulating. \n')
                 polys2Add={};
                 try                   
