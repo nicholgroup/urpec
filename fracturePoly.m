@@ -23,7 +23,6 @@ minSize=config.dx*config.fracSize; %Smallest eventual polygon size
 fracNum=config.fracNum; %number of times to fracture each polygon each iteration.
 dvals=config.dvals;
 dx=config.dx;
-dy=dx; %This is unfortunate. Fixme. 
 maxIter=10; %maximum number of fracturing iterations
 
 %First figure out the variation in dose across the polygon
@@ -84,38 +83,40 @@ while ~allGood
         i;
         
         if ~poly(i).good
+            %The next few lines create the shot map for any not-good
+            %polygons. In principle, this has already happened below after
+            %the parent polygon was fractured, but this seems to be the
+            %fastest way that I can find to do this.
             [xinds,yinds]=shrinkArray(xpold,ypold,[poly(i).x(:) poly(i).y]);
             SMN=shotMapNew(yinds,xinds);
             xpnew=xpold(xinds);
             ypnew=ypold(yinds);
-                   
+            
             poly(i).sizeX=max(poly(i).x(:))-min(poly(i).x(:));
             poly(i).sizeY=max(poly(i).y(:))-min(poly(i).y(:));
-                         
-            x=round((poly(i).x-xpnew(1))/(xpnew(2)-xpnew(1))); 
-            y=round((poly(i).y-ypnew(1))/(ypnew(2)-ypnew(1))); 
+            poly(i).layer=ceil(inpoly.layer/2);   
+            
+            x=round((poly(i).x-xpnew(1))/(xpnew(2)-xpnew(1)));
+            y=round((poly(i).y-ypnew(1))/(ypnew(2)-ypnew(1)));
             subpoly=poly2mask(x(:),y(:),length(ypnew),length(xpnew));
             
-            sm=SMN.*subpoly;       
-            sm(sm==0)=NaN;
-            maxDose=max(sm(:));
+            sm=SMN.*subpoly;
+            sm(sm==0)=NaN;           
+            [mv,ind]=min(abs(dvals-nanmean(sm(:))));
+            poly(i).dose= ind;
+
+            maxDose=max(sm(:)); 
             minDose=min(sm(:));
+
             xdiff=maxDose-minDose;
-            ydiff=maxDose-minDose;
-            
-%             xline=squeeze(nanmean(sm,1));
-%             yline=squeeze(nanmean(sm,2));           
-%             xdiff=max(xline)-min(xline);
-%             ydiff=max(yline)-min(yline);
-            
-            %shouldFracX=(xdiff>dDose/(2+iter*.5));
+            ydiff=xdiff;
+                       
             shouldFracX=(xdiff>dDose);
 
             if isempty(shouldFracX)
                 shouldFracX=0;
             end
             
-            %shouldFracY=(ydiff>dDose/(2+iter*.5));
             shouldFracY=(ydiff>dDose);
 
             if isempty(shouldFracY)
@@ -150,7 +151,7 @@ while ~allGood
             % ########## check fractured polys #########   
             bad=0;
             [polys2Add,bb]=checkPolys(polys2Add,poly(i));
-            if bb & ~isempty(polys2Add)
+            if bb && ~isempty(polys2Add)
                 bad=1; 
             end
                      
@@ -164,7 +165,7 @@ while ~allGood
             %Sometimes, fixPoly will not throw an error, but the polygons
             %are messed up. Check their areas again.
             [polys2Add,bb]=checkPolys(polys2Add,poly(i));
-            if bb & ~isempty(polys2Add)
+            if bb && ~isempty(polys2Add)
                 bad=1; 
             end
                       
@@ -214,9 +215,7 @@ while ~allGood
                 polys2Add={};
                 i=i+1;
             end
-            
-            length(polys2Add);
-            
+                        
             % ########## check dose variation ##########
             for j=1:length(polys2Add)
                 polys2Add{j}.x= polys2Add{j}.x(:);
@@ -225,9 +224,14 @@ while ~allGood
                 polys2Add{j}.sizeX=max(poly(i).x)-min(poly(i).x);
                 polys2Add{j}.sizeY=max(poly(i).y)-min(poly(i).y);
                 polys2Add{j}.layer=ceil(inpoly.layer/2);
-                 
-                x=round((polys2Add{j}.x-xpnew(1))/(xpnew(2)-xpnew(1)));
-                y=round((polys2Add{j}.y-ypnew(1))/(ypnew(2)-ypnew(1)));
+                
+                [xinds,yinds]=shrinkArray(xpold,ypold,[ polys2Add{j}.x  polys2Add{j}.y]);
+                SMN=shotMapNew(yinds,xinds);
+                xpnew=xpold(xinds);
+                ypnew=ypold(yinds);
+                
+                x=round(( polys2Add{j}.x-xpnew(1))/(xpnew(2)-xpnew(1)));
+                y=round(( polys2Add{j}.y-ypnew(1))/(ypnew(2)-ypnew(1)));
                 subpoly=poly2mask(x(:),y(:),length(ypnew),length(xpnew));
                 
                 sm=SMN.*subpoly;

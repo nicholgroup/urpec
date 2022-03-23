@@ -42,7 +42,9 @@ plots.X=[];
 plots.Y=[];
 plots(2:length(ctab))=plots(1);
 
+progressbar('Analyzing polygons');
 for ipoly=1:length(polygons)
+    progressbar(ipoly/length(polygons));
     
     p=polygons(ipoly).p;
     dose=polygons(ipoly).dose;
