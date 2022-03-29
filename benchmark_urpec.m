@@ -5,6 +5,17 @@ pecdir=fileparts(which('urpec'));
 curdir=pwd;
 cd(pecdir);
 
+%% urpec logo
+psf='PSFGaAs30kV200.mat';
+filenameP='logo.mat';
+pathnameP='Examples\';
+
+fieldsFile=urpec_v4(struct('file',[pathnameP filenameP],...
+    'psfFile',psf));
+
+%Display the pattern with doses
+plotFields(fieldsFile);
+
 
 %% Terrible, non-convex polygon
 filenameP='2d_v2.dxf';
@@ -130,3 +141,4 @@ plotFields(fieldsFile);
 
 %%
 fprintf('Passed all tests \n');
+

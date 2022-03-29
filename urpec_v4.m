@@ -354,7 +354,10 @@ if config.autoRes && (totPoints<.8*config.targetPoints || totPoints>1.2*config.t
     %the target.
     expand=sqrt(totPoints/config.targetPoints);
     dx=dx*(expand);
-    dx=round(dx,2);
+    dx=round(dx,3);
+    if dx==0
+        dx=0.001;
+    end
     config.dx=dx; %very important for fracturing.
     fprintf('Resetting the resolution to %3.4f.\n',dx);
     padSize=ceil(5/dx).*dx;
@@ -748,7 +751,13 @@ fields.ctab=ctab;
 
 fieldsFileName=[config.outputDir filename(1:end-4) '_' descr '_fields.mat'];
 fprintf('Exporting to %s\n',fieldsFileName);
-save(fieldsFileName,'fields');
+try
+    save(fieldsFileName,'fields');
+catch
+    fprintf('Can''t save the fields file. Change your path, and then type dbcont and press enter. \n')
+    keyboard;
+    save(fieldsFileName,'fields');
+end
 
 fprintf('urpec is finished.\n')
 

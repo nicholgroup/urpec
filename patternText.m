@@ -1,13 +1,16 @@
 function [BB] = patternText(str,targetLen,cntr)
-%[BB] = patternText(str,targetLen,cntr)
-% Outputs a cell array of polygons corresponding to the text. targetLen is
-% the target text legnth. This is useful for generating text patters for
-% lithography pattern files. The basic idea is to make a graph with text,
-% convert it to an image, and then extract the text from there.
+%patternText converts text into polygons.
+%
+% [BB] = patternText(str,targetLen,cntr) outputs a cell array of polygons
+% corresponding to the text. targetLen is the target text legnth. This is
+% useful for generating text patterns for lithography pattern files. The
+% basic idea is to make a graph with text, convert it to an image, and then
+% extract the text from there.
 %
 % str is the text you want to write.
 %
-% targetLen is the target length of the text
+% targetLen is the target length of the text, in whatever units you are
+% working in.
 %
 % cntr is a two-component vector describing the center of the text.
 %
@@ -22,6 +25,9 @@ set(gcf,'color','white','units','normalized','position',[.1 .1 .8 .8])
 imagesc((1:xlen),(1:ylen),ones(100,100));
 caxis([0 1]);
 set(gca,'visible','off')
+
+set(gcf, 'MenuBar', 'none');
+set(gcf, 'ToolBar', 'none');
 
 text(xlen/2-textLen/2,ylen/2,str,'FontSize',50,'Interpreter','none');
 %caxis([0 1]); 
@@ -46,7 +52,7 @@ debug=0;
 dvals=1;
 layer=struct();
 config=struct();
-config.subfieldSize=50;
+config.subfieldSize=10;
 
 for i=1:length(dvals)
     fprintf('layer %d...\n',i);
