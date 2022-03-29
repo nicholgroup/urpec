@@ -13,7 +13,8 @@ for j=(1:1:length(polys))
     a2=a2+polyarea(polys{j}.x,polys{j}.y);
 end
 
-if ~(round(a1,6)==round(a2,6))
+
+if abs(a1-a2)>0.0001*abs(a1)
     bad=1;
 end
 end

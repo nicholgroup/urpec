@@ -15,8 +15,6 @@ function [poly,triCount] = fracturePoly(config,shotMapNew,xinds,yinds,XP,YP,inpo
 % compatibility with DIVIDEXY.
 %
 
-warning('off'); %turn off warnings from polyshape.
-
 fracDebug=0;
 
 triCount=0;
@@ -25,7 +23,7 @@ minSize=config.dx*config.fracSize; %Smallest eventual polygon size
 fracNum=config.fracNum; %number of times to fracture each polygon each iteration.
 dvals=config.dvals;
 dx=config.dx;
-dy=dx; %This is unfortunate. Fixme. 
+maxIter=10; %maximum number of fracturing iterations
 
 %First figure out the variation in dose across the polygon
 maxDose=max(shotMapNew(:));
@@ -45,6 +43,9 @@ poly(1).layer=ceil(inpoly.layer/2);
 poly(1).dose=ind; %dose color
 poly(1).sizeX=max(poly(1).x)-min(poly(1).x);
 poly(1).sizeY=max(poly(1).y)-min(poly(1).y);
+
+xpold=XP(1,xinds); %1d array
+ypold=YP(yinds,1); %1d array
 
 %stash this in case the fracturing goes wrong and we need to triangulate
 %the original.
@@ -75,38 +76,72 @@ while ~allGood
         end
     end
     nPolys=length(poly);
-    %drawnow;
+
     iter=iter+1;
     i=1;
     while i<=nPolys
         i;
+        
         if ~poly(i).good
-            poly(i).sizeX=max(poly(i).x)-min(poly(i).x);
-            poly(i).sizeY=max(poly(i).y)-min(poly(i).y);
+            %The next few lines create the shot map for any not-good
+            %polygons. In principle, this has already happened below after
+            %the parent polygon was fractured, but this seems to be the
+            %fastest way that I can find to do this.
+            [xinds,yinds]=shrinkArray(xpold,ypold,[poly(i).x(:) poly(i).y]);
+            SMN=shotMapNew(yinds,xinds);
+            xpnew=xpold(xinds);
+            ypnew=ypold(yinds);
+            
+            poly(i).sizeX=max(poly(i).x(:))-min(poly(i).x(:));
+            poly(i).sizeY=max(poly(i).y(:))-min(poly(i).y(:));
+            poly(i).layer=ceil(inpoly.layer/2);   
+            
+            x=round((poly(i).x-xpnew(1))/(xpnew(2)-xpnew(1)));
+            y=round((poly(i).y-ypnew(1))/(ypnew(2)-ypnew(1)));
+            subpoly=poly2mask(x(:),y(:),length(ypnew),length(xpnew));
+            
+            sm=SMN.*subpoly;
+            sm(sm==0)=NaN;           
+            [mv,ind]=min(abs(dvals-nanmean(sm(:))));
+            poly(i).dose= ind;
 
-            XPnew=XP(yinds,xinds)+dx/2;  %2d array
-            YPnew=YP(yinds,xinds)+dy/2; %2d array
-            xpnew=XPnew(1,:); %1d array
-            ypnew=YPnew(:,1); %1d array
-            
-            xline=squeeze(nanmean(shotMapNew,1));
-            yline=squeeze(nanmean(shotMapNew,2));
-            xdiff=max(xline)-min(xline);
-            ydiff=max(yline)-min(yline);
-            
-            shouldFracX=(xdiff>dDose/(2+iter*.5));
+            maxDose=max(sm(:)); 
+            minDose=min(sm(:));
+
+            xdiff=maxDose-minDose;
+            ydiff=xdiff;
+                       
+            shouldFracX=(xdiff>dDose);
+
             if isempty(shouldFracX)
                 shouldFracX=0;
             end
-            shouldFracY=(ydiff>dDose/(2+iter*.5));
+            
+            shouldFracY=(ydiff>dDose);
+
             if isempty(shouldFracY)
                 shouldFracY=0;
             end
-            canFracX=(poly(i).sizeX/fracNum>minSize);
-            canFracY=(poly(i).sizeY/fracNum>minSize);
+            canFracX=((poly(i).sizeX/fracNum)>(minSize));
+            canFracY=((poly(i).sizeY/fracNum)>(minSize));
+            
+            %If we can't fracture anymore, call it good.
+            if (~canFracX && ~canFracY)
+                poly(i).good=1;
+            end
+            
+            if fracDebug
+                figure(778); clf; imagesc(xpnew,ypnew,sm);
+                set(gca,'YDir','norm');
+                title(sprintf('poly %d, xdiff=%2.2f, ydiff=%2.2f, %d, %d, %d, %d, %d, %d',i,xdiff,ydiff,poly(i).sizeX,poly(i).sizeY,canFracX,canFracY,shouldFracX,shouldFracY));
+            end
+            
             
             % ########## fracturing ##########
             if canFracX || canFracY
+                %The (fracNum-1)+1 below is so that when we do not
+                %fracture, we divide the polygon into 1 division along x
+                %and y, respectively.
                 polys2Add=DIVIDEXY(poly(i),canFracX*shouldFracX*(fracNum-1)+1,canFracY*shouldFracY*(fracNum-1)+1);
                 polys2Add=polys2Add(:);
             else
@@ -116,18 +151,10 @@ while ~allGood
             % ########## check fractured polys #########   
             bad=0;
             [polys2Add,bb]=checkPolys(polys2Add,poly(i));
-            if bb 
+            if bb && ~isempty(polys2Add)
                 bad=1; 
             end
-
-            if fracDebug              
-                figure(778); clf; hold on;
-                for ip=1:length(polys2Add)
-                    plot(polys2Add{ip}.x,polys2Add{ip}.y)
-                end
-            end
-            
-            
+                     
             % ########## clean up fractured polys ##########
             try
                 polys2Add=fixPolys(polys2Add);
@@ -138,14 +165,22 @@ while ~allGood
             %Sometimes, fixPoly will not throw an error, but the polygons
             %are messed up. Check their areas again.
             [polys2Add,bb]=checkPolys(polys2Add,poly(i));
-            if bb 
+            if bb && ~isempty(polys2Add)
                 bad=1; 
             end
-           
-            if bad              
+                      
+            if bad   
+                
+                if fracDebug
+                    figure(779); clf; hold on;
+                    for ip=1:length(polys2Add)
+                        plot(polys2Add{ip}.x,polys2Add{ip}.y);
+                    end
+                    drawnow;
+                end
+                
                 %fprintf('Bad fractured polygon found. Triangulating. \n')
                 polys2Add={};
-                polyin=polyshape(poly(i).x,poly(i).y);
                 try                   
                     polys2Add=triangulatePoly(poly(i));
                     [polys2Add,bad]=checkPolys(polys2Add,poly(i));
@@ -159,7 +194,7 @@ while ~allGood
                 catch e %if the triangulation goes wrong, game over. Fracture the parent polygon and start over.
                     polys2Add={};
                     %fprintf('Really bad fractured polygon found. Triangulating the original. \n');
-                    
+               
                     polys2Add=triangulatePoly(poly_orig);
                     [polys2Add,bad]=checkPolys(polys2Add, poly_orig);
                     polys2Add=fixPolys(polys2Add);
@@ -180,23 +215,26 @@ while ~allGood
                 polys2Add={};
                 i=i+1;
             end
-            
-            length(polys2Add);
-            
+                        
             % ########## check dose variation ##########
             for j=1:length(polys2Add)
-                polys2Add{j}.x= polys2Add{j}.x';
-                polys2Add{j}.y= polys2Add{j}.y';
+                polys2Add{j}.x= polys2Add{j}.x(:);
+                polys2Add{j}.y= polys2Add{j}.y(:);
                 polys2Add{j}.good=0;
                 polys2Add{j}.sizeX=max(poly(i).x)-min(poly(i).x);
                 polys2Add{j}.sizeY=max(poly(i).y)-min(poly(i).y);
                 polys2Add{j}.layer=ceil(inpoly.layer/2);
-                 
-                x=round((polys2Add{j}.x-xpnew(1))/(xpnew(2)-xpnew(1)));
-                y=round((polys2Add{j}.y-ypnew(1))/(ypnew(2)-ypnew(1)));
-                subpoly=poly2mask(x',y',length(ypnew),length(xpnew));
                 
-                sm=shotMapNew.*subpoly;
+                [xinds,yinds]=shrinkArray(xpold,ypold,[ polys2Add{j}.x  polys2Add{j}.y]);
+                SMN=shotMapNew(yinds,xinds);
+                xpnew=xpold(xinds);
+                ypnew=ypold(yinds);
+                
+                x=round(( polys2Add{j}.x-xpnew(1))/(xpnew(2)-xpnew(1)));
+                y=round(( polys2Add{j}.y-ypnew(1))/(ypnew(2)-ypnew(1)));
+                subpoly=poly2mask(x(:),y(:),length(ypnew),length(xpnew));
+                
+                sm=SMN.*subpoly;
                 sm(sm==0)=NaN;
                 maxDose=max(sm(:));
                 minDose=min(sm(:));
@@ -230,22 +268,17 @@ while ~allGood
             i=i+1;
         end
         
-        %If we can't fracture anymore, call it good.
-        if (~canFracX && ~canFracY)
-            poly(i).good=1;
-        end
     end
     
-    if iter==fracNum
+    if iter==maxIter
         for j=1:length(poly)
             poly(j).good=1;
         end
     end
+    
     allGood=all([poly.good]);
     
 end
-
-warning('on');
 
 end
 
