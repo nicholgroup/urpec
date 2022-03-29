@@ -48,7 +48,8 @@ function [fieldsFileName] = urpec_v4( config )
 %
 %   psfFile: point-spread function file
 %
-%   fracNum: maximum number of times to fracture a shape
+%   fracNum: maximum number of times to divide each polygon during every
+%   fracturing iteration.
 %
 %   fracSize: minimum size for fractured shapes, in units of dx.
 %
@@ -60,7 +61,7 @@ function [fieldsFileName] = urpec_v4( config )
 %   outputDir: the directory in which to save the output files.
 %
 %   savedxf: boolean variable indicating whether or not to save output dxf.
-%   Default is false, althought autocad is a nice way to view complex files.
+%   Default is false, although autocad is a nice way to view complex files.
 %
 %   savedc2: boolean variable indicating whether or not to save output dc2.
 %   Default is false. If you are using NPGS, set this to true.
@@ -79,7 +80,7 @@ function [fieldsFileName] = urpec_v4( config )
 %
 %   triangulate: boolean variable indicating whether or not to triangulate
 %   non-convex polygons. Enabling this generates lots of triangles, but all of
-%   the polygons will be good. Default is false.
+%   the polygons will be good, and the fracturing is faster. Default is true.
 %
 % call this function without any arguments, or via
 % urpec(struct('dx',0.005, 'subfieldSize',20,'maxIter',6,'dvals',[1:.2:2.4]))
@@ -106,6 +107,9 @@ debug=0;
 
 tic
 
+orig_state=warning;
+warning('off');
+
 fprintf('urpec is running.\n');
 
 if ~exist('config','var')
@@ -119,8 +123,8 @@ config = def(config,'maxIter',6);  %max number of iterations for the deconvoluti
 config = def(config,'dvals',linspace(1,2.0,15));  %doses corresponding to output layers, in units of dose to clear
 config=def(config,'file',[]); 
 config=def(config,'psfFile',[]);
-config=def(config,'fracNum',3);
-config=def(config,'fracSize',4);
+config=def(config,'fracNum',4); %Must be >2, otherwise DIVIDEXY has problems.
+config=def(config,'fracSize',2);
 config=def(config,'padLen',5);
 config=def(config,'savedxf',false);
 config=def(config,'savedc2',false);
@@ -319,7 +323,7 @@ minY = min(yv);
 
 dx = config.dx;
 
-fprintf(['Creating 2D binary grid spanning medium feature write field (spacing = ', num2str(dx), ').\n']);
+fprintf(['Creating 2D binary grid spanning all polygons (spacing = ', num2str(dx), ').\n']);
 
 %Make the simulation area bigger by 5 microns to account for proximity effects
 maxXold=maxX;
@@ -348,16 +352,18 @@ if config.autoRes && (totPoints<.8*config.targetPoints || totPoints>1.2*config.t
     %The following way of changing the resolution will yield a step size
     %that is a power of 2 different that the originally specified step
     %size.
-%     expand=ceil(log2(sqrt(totPoints/config.targetPoints)));
-%     dx=dx*2^(expand);
+    expand=ceil(log2(sqrt(totPoints/config.targetPoints)));
+    dx=dx*2^(expand);
+
     %This way of changing the resolution will get as close as possible to
     %the target.
-    expand=sqrt(totPoints/config.targetPoints);
-    dx=dx*(expand);
-    dx=round(dx,3);
-    if dx==0
-        dx=0.001;
-    end
+%     expand=sqrt(totPoints/config.targetPoints);
+%     dx=dx*(expand);
+%     dx=round(dx,3);
+%     if dx==0
+%         dx=0.001;
+%     end
+
     config.dx=dx; %very important for fracturing.
     fprintf('Resetting the resolution to %3.4f.\n',dx);
     padSize=ceil(5/dx).*dx;
@@ -654,8 +660,14 @@ for ip = 1:length(polygons)
             subField(ip).poly(1).layer=ceil(polygons(ip).layer/2);
         else %Need to fracture. In the future, this should be made into a function if increased complexity is desired.
             [subField(ip).poly,tc]=fracturePoly(config,shotMapNew,xinds,yinds,XPold,YPold,polygons(ip),ctab);
-            subField(ip).poly(1).layer=ceil(polygons(ip).layer/2);
             triCount=triCount+tc;
+        end
+        
+        if debug
+            figure(779); clf; hold on;
+            for pp=1:length(subField(ip).poly)
+                plot(subField(ip).poly(pp).x,subField(ip).poly(pp).y,'Color',ctab{subField(ip).poly(pp).dose}./255)
+            end
         end
             
     else %no fracturing        
@@ -758,6 +770,7 @@ catch
     keyboard;
     save(fieldsFileName,'fields');
 end
+warning(orig_state);
 
 fprintf('urpec is finished.\n')
 
