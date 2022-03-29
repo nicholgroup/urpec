@@ -106,8 +106,8 @@ plotFields(fieldsFile);
 %% Spiral tests
 psf='PSFSiNb125_950_50.mat';
 %filenameP='spiral_nice_simple.dxf';
-%filenameP='spiral_nice.mat';
-filenameP='spiral_bad.mat';
+filenameP='spiral_nice.mat';
+%filenameP='spiral_bad.mat';
 
 pathnameP='Examples\';
 
