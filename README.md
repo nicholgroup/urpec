@@ -5,7 +5,7 @@ urpec generates a proximity-effect-corrected pattern file for electron beam lith
 
 urpec can be used with NPGS and can output a .dc2 file suitable for NPGS. Urpec can easily be adapted for use with other electron-beam lithography platforms, such as Elionix. Please contact us for more details about this.
 
-To run urpec, download all files to a folder. Set your matlab path to this folder and run urpec_v4, optionally with arguments. See the documentation inside urpec for calling urpec with arguments. You can also run it from a script. This is useful for batch processing. See the script called run_urpec for more details on this and how to create an NPGS run file.
+To run urpec, download all files to a folder. Set your matlab path to this folder and run urpec_v4, optionally with arguments. See the documentation inside urpec_v4 for calling urpec_v4 with arguments. You can also run it from a script. This is useful for batch processing. See the script called run_urpec for more details on this and how to create an NPGS run file.
 
 Current PSFs available include the following
 - GaAs, 30 kV, 200 nm PMMA
