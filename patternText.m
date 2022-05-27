@@ -10,14 +10,15 @@ function [BB] = patternText(str,targetLen,cntr)
 % str is the text you want to write.
 %
 % targetLen is the target length of the text, in whatever units you are
-% working in.
+% working in. If you want the text to be larger, make this bigger.
 %
 % cntr is a two-component vector describing the center of the text.
 %
 % BB is the cell array of polygons. Note that the first column of each
 % element is the y value, and the second element is the X value.
 
-textLen=30/9*length(str); %empirical scaling for this font size
+fontSize=25; %Try not to change this. If you need to change the size, change the targetLen input argument 
+textLen=30/9*length(str)*fontSize/25; %empirical scaling for this font size
 xlen=2*textLen+40;
 ylen=100;
 figure(1111); clf; colormap gray;
@@ -29,7 +30,7 @@ set(gca,'visible','off')
 set(gcf, 'MenuBar', 'none');
 set(gcf, 'ToolBar', 'none');
 
-text(xlen/2-textLen/2,ylen/2,str,'FontSize',50,'Interpreter','none');
+text(xlen/2-textLen/2,ylen/2,str,'FontSize',fontSize,'Interpreter','none');
 %caxis([0 1]); 
 %set(gcf,'color','white','units','normalized','position',[.1 .1 .8 .8])
 
