@@ -75,7 +75,7 @@ function [fieldsFileName] = urpec_v4( config )
 %
 %   overlap: boolean variable indicating how overlaps are handled. If false,
 %   urpec will accont for the fact that overlap areas are multiply exposed.
-%   If true, urpect will allow over exposure in overlap regions. Default is
+%   If true, urpec will allow over exposure in overlap regions. Default is
 %   true.
 %
 %   triangulate: boolean variable indicating whether or not to triangulate
