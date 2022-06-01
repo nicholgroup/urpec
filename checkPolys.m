@@ -1,4 +1,4 @@
-function [polys,bad] = checkPolys(polys,parent)
+function [polys,bad] = checkPolys(polys,parent,minArea)
 %CHECKPOLYS checks fractured polygons.
 %
 % [polys,bad] = CHECKPOLYS(parent,polys) checks a cell array of fracture
@@ -6,6 +6,9 @@ function [polys,bad] = checkPolys(polys,parent)
 % that the sum of the fractured areas equals the area of the parent
 % polygon. The boolean output bad is true if the areas do not match.
 
+if ~exist('minArea','var')
+    minArea=1e-5; %suitable for when the units are microns
+end
 
 for j=(length(polys):-1:1)
     
@@ -14,7 +17,7 @@ for j=(length(polys):-1:1)
     end
     
     try
-        if polyarea(polys{j}.x,polys{j}.y)<1e-5
+        if polyarea(polys{j}.x,polys{j}.y)<minArea
             polys(j)=[];
         end
     end
