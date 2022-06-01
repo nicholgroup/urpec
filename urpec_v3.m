@@ -1,16 +1,12 @@
 function [fieldsFileName] = urpec_v3( config )
 % urpec_v3 Generates a proximity-effect-corrected pattern file for EBL
 %
-% function [  ] = urpec_v3( config )
+% function [fieldsFileName] = urpec_v3( config )
 % To run urpec and make a run file, see the script run_urpec.
 % 
 % The corrected file is created by deconvolving a point spread function 
 % from an input .dxf or .mat pattern file.
 % 
-% The output file has different colors, each of which recieve a different
-% dose. This function assumes that one unit in the input pattern file is one
-% micron.
-%
 % The layer scheme is as follows. The names for all layers should be numbers.
 % Layers 1 and 2 of the input file willHW6_solutions
 % both be output to layer 1 of the output file. Layer 1 will not be
@@ -40,14 +36,16 @@ function [fieldsFileName] = urpec_v3( config )
 %
 %   file: datafile for processing. This can either be a .dxf file or a .mat
 %   file. If it is a .mat file, the contets of the file should be a struct
-%   called polygons. The polygons struct should have at least these fields:
-%       p: a cell array of polygons. Each element of the cell array should
-%       be a nx2 array of coordinates describing the poylgon.
-%       layer: an array of numbers specifying the layer of each polygon
-%       according to the convention described above.
+%   array called polygons. Each element of the struct array should have
+%   these fields:
+%   p: an nx2 array of coordinates describing the poylgon.
+%   layer: a number giving the polygon number
+%   according to the convention described above.
+%   Optional fields in this struct include:
+%   lineType: linetype for .dc2 and NPGS
+%   dose: The dose (in units to clear) of the polygon
 %
 %   psfFile: point-spread function file
-%
 %
 %   fracNum: maximum number of times to fracture a shape
 %
@@ -68,8 +66,15 @@ function [fieldsFileName] = urpec_v3( config )
 %   If true, urpect will allow over exposure in overlap regions. Default is
 %   true.
 %
-% call this function without any arguments, or via
-% urpec(struct('dx',0.005, 'subfieldSize',20,'maxIter',6,'dvals',[1:.2:2.4]))
+% The output of this function can be a .dxf or .dc2 file, in which the
+% different polygons have different colors corresponding to doses. This
+% function will also save a "_field.mat" file, which contains all of the
+% information. This file contains a matlab struct with the following fields
+% cadFile, doseFile, dvalsAct, polygons. This function will also save a
+% text files with the doses.
+%
+% Call this function without any arguments, or via
+% urpec_v3(struct('dx',0.005, 'subfieldSize',20,'maxIter',6,'dvals',[1:.2:2.4]))
 % for example
 %
 %
@@ -123,7 +128,6 @@ if isempty(config.file)
     [pathname,filename,ext] = fileparts(fullfile(pathname,filename));
 else
     [pathname,filename,ext] = fileparts(config.file);
-
 end
 
 pathname=[pathname '\'];
