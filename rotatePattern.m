@@ -1,5 +1,7 @@
 function [] = rotatePattern(fieldsFile,angles)
-% Rotates a pattern by angle degrees
+% rotatePattern rotates a pattern by angle degrees
+% 
+% rotatePattern(fieldsFile,angles) takes in two arguments
 % fieldsFile: a "fields.mat" file produced by urpec
 % angles: an array of angles in degrees to rotate a pattern.
 %
@@ -16,7 +18,11 @@ if ~exist(fieldsFile,'var')
 end
 
 load(fieldsFile)
-cadName=fields.cadFile;
+try
+    cadName=fields.cadFile;
+catch
+    cadName=fieldsFile(1:end-11);
+end
 
 polygons=fields.polygons;
 
