@@ -1,7 +1,5 @@
 function [] = rotatePattern(fieldsFile,angles)
-% rotatePattern rotates a pattern by angle degrees
-% 
-% rotatePattern(fieldsFile,angles) takes in two arguments
+% Rotates a pattern by angle degrees
 % fieldsFile: a "fields.mat" file produced by urpec
 % angles: an array of angles in degrees to rotate a pattern.
 %
@@ -18,14 +16,8 @@ if ~exist(fieldsFile,'var')
 end
 
 load(fieldsFile)
-try
-    cadName=fields.cadFile;
-catch
-    cadName=fieldsFile(1:end-11);
-end
 
 polygons=fields.polygons;
-
 
 for a=1:length(angles)
     
@@ -40,13 +32,16 @@ for a=1:length(angles)
     end
     
     fieldsFileName=[fieldsFile(1:end-11) strrep(sprintf('_R%1.1f',angles(a)),'.','_') '_fields.mat'];
-    dc2FileName=[cadName(1:end-4) strrep(sprintf('_R%1.1f',angles(a)),'.','_') '.dc2'];
-    
-    fields.cadFile=dc2FileName;
-    
+   
+%     cadName=fields.cadFile;
+%     dc2FileName=[cadName(1:end-4) strrep(sprintf('_R%1.1f',angles(a)),'.','_') '.dc2'];
+%     dc2write(rotatedPolys,dc2FileName);
+%     fields.cadFile=dc2FileName;
+
+
+    fields.polygons=rotatedPolys;
     save(fieldsFileName,'fields');
     
-    dc2write(rotatedPolys,dc2FileName);
 end
 
 cd(dir);

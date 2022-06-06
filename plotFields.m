@@ -19,6 +19,8 @@ else
     curdir=pwd;
 end
 
+fprintf('Loading from %s. \n',filename);
+
 d=load(filename);
 fields=d.fields;
 
