@@ -11,7 +11,7 @@ end
 
 %If we have a very complicated polygon, try to split it with
 %DIVIDEXY, so we avoid too many nasty triangles.
-if length(parent.x>10)
+if length(parent.x)>10
     ndiv=round(length(parent.x)/4);
     polys=DIVIDEXY(parent,ndiv,ndiv);
     polys=polys(:);

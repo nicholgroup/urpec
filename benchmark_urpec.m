@@ -11,6 +11,7 @@ filenameP='logo.mat';
 pathnameP='Examples\';
 
 fieldsFile=urpec_v4(struct('file',[pathnameP filenameP],...
+    'triangulate',false,...
     'psfFile',psf));
 
 %Display the pattern with doses
@@ -116,7 +117,7 @@ fieldsFile=urpec_v4(struct('file',[pathnameP filenameP],...
     'autoRes',true,...
     'dx',.05));
 %Display the pattern with doses
-plotFields(fieldsFile);
+%plotFields(fieldsFile);
 
 %% Small features, off center. 
 %This can easily generate lots of points, so be careful

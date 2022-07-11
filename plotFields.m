@@ -54,9 +54,11 @@ for ipoly=1:length(polygons)
     x=polygons(ipoly).p(:,1);
     y=polygons(ipoly).p(:,2);
     
-    [x,y,polyin]=fixPoly(x,y);
+    nvertices=length(x);
     
-    nvertices=size(polyin.Vertices,1);
+    %[x,y,polyin]=fixPoly(x,y);
+    
+    %nvertices=size(polyin.Vertices,1);
         
     if isempty(x)
         continue

@@ -53,8 +53,6 @@ poly_orig=poly;
 
 allGood=0;
 
-really_bad=0;
-
 nPolys=1;
 iter=0;
 
