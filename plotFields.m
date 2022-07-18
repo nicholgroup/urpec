@@ -45,20 +45,19 @@ plots.Y=[];
 plots(2:length(ctab))=plots(1);
 
 progressbar('Analyzing polygons');
-for ipoly=1:length(polygons)
-    progressbar(ipoly/length(polygons));
+for ip=1:length(polygons)
+    progressbar(ip/length(polygons));
     
-    p=polygons(ipoly).p;
-    dose=polygons(ipoly).dose;
+    p=polygons(ip).p;
+    dose=polygons(ip).dose;
     
-    x=polygons(ipoly).p(:,1);
-    y=polygons(ipoly).p(:,2);
+    %For compatibiltiy with older software versions.
+    x=polygons(ip).p(:,1);
+    y=polygons(ip).p(:,2);
+    polygons(ip).x=x;
+    polygons(ip).y=y;
     
-    nvertices=length(x);
-    
-    %[x,y,polyin]=fixPoly(x,y);
-    
-    %nvertices=size(polyin.Vertices,1);
+    nvertices=length(polygons(ip).x);
         
     if isempty(x)
         continue
@@ -66,12 +65,9 @@ for ipoly=1:length(polygons)
     
     if ~any(nvertices==[3,4]) %Need to fracture the shape
         
-        parent=struct;
-        parent.x=x;
-        parent.y=y;
-        
-        polys=divideAndTriangulatePoly(parent);
-        
+        %polys=divideAndTriangulatePoly(polygons(ip));
+        polys=trapefy(polygons(ip));
+
         for ip=1:length(polys)
             xnew=[polys{ip}.x(:); polys{ip}.x(1)];
             ynew=[polys{ip}.y(:); polys{ip}.y(1)];

@@ -1,4 +1,4 @@
-function [polys] = triangulatePoly(parent)
+function [polys] = triangulatePoly(poly)
 %triangulatePoly fractures a polygon into triangles.
 %   
 %[out] = triangulatePoly(poly) gives a cell array of polygons (out), where
@@ -7,7 +7,7 @@ function [polys] = triangulatePoly(parent)
 %and y, which are column vectors of the polygons.
 
 %First, make a nice polygon.
-polyin=polyshape(parent.x,parent.y);
+polyin=polyshape(poly.x,poly.y);
 
 x=polyin.Vertices(:,1);
 y=polyin.Vertices(:,2);

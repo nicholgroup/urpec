@@ -2,14 +2,16 @@ function [isConvex,v] = checkConvex(px,py)
 % Given a set of points determine if they form a convex polygon
 % Inputs 
 %  px, py: x and y coordinates of the vertices for a given polygon
-
+%
 % Output 
 %  isConvex: 1 or 0 for polygon being convex or concave
+%
 % https://matlabgeeks.com/tips-tutorials/computational-geometry/check-convexity-of-polygon/
 
 numPoints = numel(px);
 if numPoints < 4
     isConvex = true;
+    v=linspace(-1,-1,numPoints);
     return
 end
 

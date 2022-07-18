@@ -1,4 +1,4 @@
-function [poly,triCount] = fracturePoly(config,shotMapNew,xinds,yinds,XP,YP,inpoly,ctab)
+function [poly,triData] = fracturePoly(config,shotMapNew,xinds,yinds,XP,YP,inpoly,ctab)
 %fracturePoly fractures polygons for urpec
 %
 %fracturePoly fractures polygons according to the shotMapNew produced by
@@ -17,7 +17,16 @@ function [poly,triCount] = fracturePoly(config,shotMapNew,xinds,yinds,XP,YP,inpo
 
 fracDebug=0;
 
+%polyfn=@fixPolys;
+polyfn=@fixPolys2;
+
 triCount=0;
+c1=0;
+c2=0;
+f1=0;
+bc=0;
+
+triData=struct();
 
 minSize=config.dx*config.fracSize; %Smallest eventual polygon size
 fracNum=config.fracNum; %number of times to fracture each polygon each iteration.
@@ -32,11 +41,10 @@ minDose=min(shotMapNew(:));
 %Maximum dose variation inside of one shape.
 dDose=dvals(2)-dvals(1);
 
-p=inpoly.p;
-
 poly=struct;
-poly(1).x=p(:,1); %column vector
-poly(1).y=p(:,2); %column vector
+poly(1).x=inpoly.x; %column vector
+poly(1).y=inpoly.y; %column vector
+poly(1).p=inpoly.p;
 poly(1).good=0;
 poly(1).layer=ceil(inpoly.layer/2);
 [mv,ind]=min(abs(dvals-nanmean(shotMapNew(:))));
@@ -105,10 +113,12 @@ while ~allGood
 
             maxDose=max(sm(:)); 
             minDose=min(sm(:));
-
-            xdiff=maxDose-minDose;
-            ydiff=xdiff;
-                       
+            
+            %xdiff=maxDose-minDose;
+            %ydiff=xdiff;
+            xdiff=max(max(sm,[],2)-min(sm,[],2));
+            ydiff=max(max(sm,[],1)-min(sm,[],1));
+                      
             shouldFracX=(xdiff>dDose);
 
             if isempty(shouldFracX)
@@ -148,36 +158,47 @@ while ~allGood
             
             % ########## check fractured polys #########   
             bad=0;
+            pA=polys2Add; %for debugging
             [polys2Add,bb]=checkPolys(polys2Add,poly(i));
             if bb && ~isempty(polys2Add)
+                c1=c1+1;
                 bad=1; 
             end
                      
-            % ########## clean up fractured polys ##########
-            try
-                polys2Add=fixPolys(polys2Add);
-            catch e
-                bad=1;
-            end
-            
-            %Sometimes, fixPoly will not throw an error, but the polygons
-            %are messed up. Check their areas again.
-            [polys2Add,bb]=checkPolys(polys2Add,poly(i));
-            if bb && ~isempty(polys2Add)
-                bad=1; 
+            % ########## clean up fractured polys if needed ##########
+            if ~(config.triangulate || config.convexify)
+                try
+                    pA=polys2Add; %for debugging
+                    polys2Add=polyfn(polys2Add);
+                catch e
+                    f1=f1+1;
+                    bad=1;
+                end
+                
+                %Sometimes, fixPoly will not throw an error, but the polygons
+                %are messed up. Check their areas again.
+                [polys2Add,bb]=checkPolys(polys2Add,poly(i));
+                if bb && ~isempty(polys2Add)
+                    c2=c2+1;
+                    bad=1;
+                end
             end
                       
             if bad   
                 
+                bc=bc+1;
+                
                 if fracDebug
                     figure(779); clf; hold on;
                     for ip=1:length(polys2Add)
-                        plot(polys2Add{ip}.x,polys2Add{ip}.y);
+                        try
+                            plot(polys2Add{ip}.x,polys2Add{ip}.y);
+                        catch
+                        end
                     end
                     drawnow;
                 end
                 
-                %fprintf('Bad fractured polygon found. Triangulating. \n')
                 polys2Add={};
                 try                   
                     polys2Add=triangulatePoly(poly(i));
@@ -185,17 +206,15 @@ while ~allGood
                     if bad
                         error('');
                     end
-                    polys2Add=fixPolys(polys2Add);
-                    
+
                     triCount=triCount+1;
 
                 catch e %if the triangulation goes wrong, game over. Fracture the parent polygon and start over.
                     polys2Add={};
-                    %fprintf('Really bad fractured polygon found. Triangulating the original. \n');
-               
+              
                     polys2Add=triangulatePoly(poly_orig);
                     [polys2Add,bad]=checkPolys(polys2Add, poly_orig);
-                    polys2Add=fixPolys(polys2Add);
+                    polys2Add=polyfn(polys2Add);
                     
                     triCount=triCount+1;
                     
@@ -218,6 +237,7 @@ while ~allGood
             for j=1:length(polys2Add)
                 polys2Add{j}.x= polys2Add{j}.x(:);
                 polys2Add{j}.y= polys2Add{j}.y(:);
+                polys2Add{j}.p= [polys2Add{j}.x(:) polys2Add{j}.y(:)];              
                 polys2Add{j}.good=0;
                 polys2Add{j}.sizeX=max(poly(i).x)-min(poly(i).x);
                 polys2Add{j}.sizeY=max(poly(i).y)-min(poly(i).y);
@@ -277,6 +297,13 @@ while ~allGood
     allGood=all([poly.good]);
     
 end
+
+triData.triCount=triCount;
+triData.c1=c1;
+triData.c2=c2;
+triData.f1=f1;
+triData.bc=bc;
+
 
 end
 

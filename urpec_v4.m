@@ -1,4 +1,4 @@
-function [fieldsFileName] = urpec_v4( config )
+function [fieldsFileName,T] = urpec_v4( config )
 % urpec_v4 Generates a proximity-effect-corrected pattern file for EBL
 %
 % function [  ] = urpec_v4( config )
@@ -41,8 +41,7 @@ function [fieldsFileName] = urpec_v4( config )
 %   file: datafile for processing. This can either be a .dxf file or a .mat
 %   file. If it is a .mat file, the contets of the file should be a struct
 %   called polygons. The polygons struct should have at least these fields:
-%       p: a cell array of polygons. Each element of the cell array should
-%       be a nx2 array of coordinates describing the poylgon.
+%       p: an nx2 array of coordinates describing the poylgon.
 %       layer: an array of numbers specifying the layer of each polygon
 %       according to the convention described above.
 %
@@ -80,7 +79,10 @@ function [fieldsFileName] = urpec_v4( config )
 %
 %   triangulate: boolean variable indicating whether or not to triangulate
 %   non-convex polygons. Enabling this generates lots of triangles, but all of
-%   the polygons will be good, and the fracturing is faster. Default is true.
+%   the polygons will be good, and the fracturing is faster. Default is false.
+%
+%   convexify: boolean variable indicating whether or not to fracture
+%   concave polygons into convex polygons. Default is true.
 %
 % call this function without any arguments, or via
 % urpec(struct('dx',0.005, 'subfieldSize',20,'maxIter',6,'dvals',[1:.2:2.4]))
@@ -120,7 +122,7 @@ config = def(config,'dx',.01);   %Grid spacing in microns. This is can be affect
 config = def(config,'targetPoints',50e6);  %Target number of points for the simulation. 
 config = def(config,'autoRes',true);  %auto adjust the resolution
 config = def(config,'maxIter',6);  %max number of iterations for the deconvolution
-config = def(config,'dvals',linspace(1,2.0,15));  %doses corresponding to output layers, in units of dose to clear
+config = def(config,'dvals',linspace(1,2.0,15));  %doses corresponding to different output doses, in units of dose to clear
 config=def(config,'file',[]); 
 config=def(config,'psfFile',[]);
 config=def(config,'fracNum',4); %Must be >2, otherwise DIVIDEXY has problems.
@@ -132,6 +134,8 @@ config=def(config,'savedose',false);
 config=def(config,'npgs',false);
 config=def(config,'overlap',true);
 config=def(config,'triangulate',false);
+config=def(config,'convexify',true);
+
 
 if config.npgs
     config.savedose=true;
@@ -247,20 +251,38 @@ yv=[];
 % ########## Analyze polygons ##########
 
 %Find the approximate size of the polygons and try to clean them up. 
-%This does not handle duplicate vertices well. 
+%This does not handle duplicate vertices well. After this point, we keep
+%track of polygons as structs with fields x and y. 
 progressbar('Analyzing polygons');
-for ip=1:length(polygons)
-    progressbar(ip/length(polygons));
+%TODO: allow for the case that the input struct has x and y fields.
+polygons(1).x=[];
+polygons(1).y=[];
+counter=1;
+for ip=length(polygons):-1:1
+    progressbar(counter/length(polygons));
     x=polygons(ip).p(:,1);
     y=polygons(ip).p(:,2);
-    [x1,y1]=fixPoly(x,y);
-    polygons(ip).p=[x1 y1];
+    
+    polygons(ip).x=x;
+    polygons(ip).y=y;
 
-    sx=max(polygons(ip).p(:,1))-min(polygons(ip).p(:,1));
-    sy=max(polygons(ip).p(:,2))-min(polygons(ip).p(:,2));
+%     [x1,y1]=fixPoly(x,y);
+%     polygons(ip).p=[x1 y1];   
+%     polygons(ip).x=x1;
+%     polygons(ip).y=y1;
+
+    polys=fixPoly2(polygons(ip));
+    polygons=[polygons(1:ip-1) polys polygons(ip+1:end)];
+    
+    counter=counter+1;
+end
+
+for ip=1:length(polygons)
+    sx=max(polygons(ip).x)-min(polygons(ip).x);
+    sy=max(polygons(ip).y)-min(polygons(ip).y);
     polygons(ip).polysize=min([sx,sy]);
-    xv=[xv; polygons(ip).p(:,1)];
-    yv=[yv; polygons(ip).p(:,2)];
+    xv=[xv; polygons(ip).x];
+    yv=[yv; polygons(ip).y];
 end
 
 %Check for convexity and triangulate non-convex polygons if needed
@@ -272,33 +294,32 @@ end
 
 nc=0; %counter for number of non-convex polygons
 for ip = 1:length(polygons)
-       
-    p=polygons(ip).p; %p(:,2:3);
-    
+           
     fracture=~mod(polygons(ip).layer,2);
 
-    isConvex = checkConvex(p(:,1)',p(:,2)');
+    isConvex = checkConvex(polygons(ip).x,polygons(ip).y);
     if ~isConvex && fracture 
-        %fprintf('Non-convex polygon to be fractured found. \n');
         nc=nc+1;
-        x=p(:,1)';
-        y=p(:,2)';
-        
-        if config.triangulate
-            %polyin=polyshape(x,y);
-            %fracture it into triangles
-            parent=struct();
-            parent.x=x;
-            parent.y=y;
-    
-            T=triangulatePoly(parent);
+       
+        if config.triangulate || config.convexify
+            parent=polygons(ip);
+            
+            if config.triangulate
+                T=triangulatePoly(parent);
+            elseif config.convexify
+                T=convexify(parent);
+            end
+            
             T=checkPolys(T,parent);
-            T=fixPolys(T);
+            T=fixPolys2(T);
             T=checkPolys(T,parent);
     
             for tt=1:length(T)
                 polygonsTmp(end+1)=polygons(ip);
                 polygonsTmp(end).p=[T{tt}.x(:) T{tt}.y(:)]; %convert to column vectors.
+                polygonsTmp(end).x=T{tt}.x(:); 
+                polygonsTmp(end).y=T{tt}.y(:);
+
             end
         else
             polygonsTmp(end+1)=polygons(ip);
@@ -313,6 +334,13 @@ fprintf('Found %d non-convex polygons to be fractured. \n',nc);
 
 polygons=polygonsTmp;
 polygons=polygons(2:end); %We initialized it with an empty element.
+
+if debug
+    figure(554); clf; hold on;
+    for ip=1:length(polygons)
+        plot([polygons(ip).x; polygons(ip).x(1)],[polygons(ip).y; polygons(ip).y(1)]);
+    end
+end
 
 % ########## Creating exposure map ##########
 
@@ -410,10 +438,10 @@ progressbar(sprintf('Creating the exposure pattern for %d polygons.',length(poly
 for ip=1:length(polygons)
     progressbar(ip/length(polygons));    
     
-    [xinds,yinds]=shrinkArray(xp,yp,polygons(ip).p);
+    [xinds,yinds]=shrinkArray(xp,yp,[polygons(ip).x,polygons(ip).y] );
     
-    x=round((polygons(ip).p(:,1)-xp(xinds(1)))/dx);
-    y=round((polygons(ip).p(:,2)-yp(yinds(1)))/dx);
+    x=round((polygons(ip).x-xp(xinds(1)))/dx);
+    y=round((polygons(ip).y-yp(yinds(1)))/dx);
     subpoly=poly2mask(x',y',length(yinds),length(xinds));
     polysbin(yinds,xinds)=polysbin(yinds,xinds)+subpoly;
     
@@ -482,26 +510,30 @@ psf=psf./sum(psf(:));
 %Zero pad to at least 10um x 10 um. This is needed in case the sample is
 %very small.
 
-%pad in the x direction
-xpad=size(polysbin,1)-size(psf,1);
-if xpad>0
-    psf=padarray(psf,[xpad/2,0],0,'both');
+%pad along the first dimension
+ypad=size(polysbin,1)-size(psf,1);
+if ypad>0
+    psf=padarray(psf,[ypad/2,0],0,'both');
     padPoints1=padPoints;
-elseif xpad<0
-    polysbin=padarray(polysbin,[-xpad/2,0],0,'both');
-    padPoints1=padPoints-xpad/2;
+    ypdisp=yp;
+elseif ypad<0
+    polysbin=padarray(polysbin,[-ypad/2,0],0,'both');
+    padPoints1=padPoints-ypad/2;
+    ypdisp=[((0:1:-ypad/2-1)+ypad/2).*dx+yp(1) yp ((1:1:-ypad/2).*dx+yp(end))];
 end
 
 padPoints1=round(padPoints1);
 
-%pad in the y direction
-ypad=size(polysbin,2)-size(psf,2);
-if ypad>0
-    psf=padarray(psf,[0,ypad/2],0,'both');
+%pad along the second dimension
+xpad=size(polysbin,2)-size(psf,2);
+if xpad>0
+    psf=padarray(psf,[0,xpad/2],0,'both');
     padPoints2=padPoints;
-elseif ypad<0
-    polysbin=padarray(polysbin,[0,-ypad/2],0,'both');
-    padPoints2=padPoints-ypad/2; 
+    xpdisp=xp;
+elseif xpad<0
+    polysbin=padarray(polysbin,[0,-xpad/2],0,'both');
+    padPoints2=padPoints-xpad/2; 
+    xpdisp=[((0:1:-xpad/2-1)+xpad/2).*dx+xp(1) xp ((1:1:-xpad/2).*dx+xp(end))];
 end
 
 padPoints2=round(padPoints2);
@@ -519,9 +551,12 @@ end
 
 dose=dstart;
 doseNew=shape; %Initial guess at dose. Just the dose to clear everywhere.
-figure(555); clf; imagesc(xp,yp,polysbin);
+figure(555); clf; imagesc(xpdisp,ypdisp,polysbin);
 set(gca,'YDir','norm');
 title('CAD pattern');
+caxis([0,max(config.dvals)]);
+colormap('jet');
+colorbar;
 drawnow;
 
 %The deconvolution method is to convolve with the psf, add the difference
@@ -543,16 +578,22 @@ for iter=1:config.maxIter
     
     figure(556); clf;
     subplot(1,2,2);
-    imagesc(xp,yp,doseActual);
+    imagesc(xpdisp,ypdisp,doseActual);
     title(sprintf('Actual dose. Iteration %d',iter));
     set(gca,'YDir','norm');
+    caxis([0,max(config.dvals)]);
+    colormap('jet');
+    colorbar;
     
     doseNew=doseNew+1.2*(shape-doseShape); %Deonvolution: add the difference between the desired dose and the actual dose to doseShape, defined above
     subplot(1,2,1);
-    imagesc(xp,yp,doseNew);
+    imagesc(xpdisp,ypdisp,doseNew);
     title(sprintf('Programmed dose. Iteration %d',iter));
     set(gca,'YDir','norm');
-    
+    caxis([0,max(config.dvals)]);
+    colormap('jet');
+    colorbar;
+
     drawnow;
     
 end
@@ -609,25 +650,15 @@ subField=struct();
 nPolys2Frac=sum(~mod([polygons.layer],2));
 nPolysNot2Frac=sum(mod([polygons.layer],2));
 progressbar(sprintf('Fracturing/Averaging %d/%d',nPolys2Frac,nPolysNot2Frac));
-triCount=0;
+triCount=0; c1=0; c2=0; f1=0; bc=0;
 for ip = 1:length(polygons)
     progressbar(ip/length(polygons));
-    
-    p=polygons(ip).p;
-    
-    pu=unique(p,'rows');
-    
-    %The dxf importer has duplicate points sometimes. This should have been
-    %taken care of above, but it probably doesn't hurt to do this again.
-    if length(pu)==length(p)/2-1
-        p=p(1:end/2,:);
-    end
     
     %keep only the parts of the array we care about.
     [xinds,yinds]=shrinkArray(xpold,ypold,polygons(ip).p);
     
-    x=round((polygons(ip).p(:,1)-xpold(xinds(1)))/dx);
-    y=round((polygons(ip).p(:,2)-ypold(yinds(1)))/dx);
+    x=round((polygons(ip).x-xpold(xinds(1)))/dx);
+    y=round((polygons(ip).y-ypold(yinds(1)))/dx);
     sp=poly2mask(x',y',length(yinds),length(xinds));
     
     subpoly=0.*XPold;
@@ -653,14 +684,18 @@ for ip = 1:length(polygons)
         if (maxDose-minDose)<dDose %don't need to fracture
             %the subfield struct holds all of the fractured polygons coming
             %from each of the original polygons.
-            subField(ip).poly(1).x=p(:,1);
-            subField(ip).poly(1).y=p(:,2);
+            subField(ip).poly(1).x=polygons(ip).x;
+            subField(ip).poly(1).y=polygons(ip).y;
             [mv,ind]=min(abs(dvals-squeeze(nanmean(shotMapNew(:)))));
             subField(ip).poly(1).dose=ind;
             subField(ip).poly(1).layer=ceil(polygons(ip).layer/2);
         else %Need to fracture. In the future, this should be made into a function if increased complexity is desired.
-            [subField(ip).poly,tc]=fracturePoly(config,shotMapNew,xinds,yinds,XPold,YPold,polygons(ip),ctab);
-            triCount=triCount+tc;
+            [subField(ip).poly,td]=fracturePoly(config,shotMapNew,xinds,yinds,XPold,YPold,polygons(ip),ctab);
+            triCount=triCount+td.triCount;
+            c1=c1+td.c1;
+            c2=c2+td.c2;
+            f1=f1+td.f1;
+            bc=bc+td.bc;
         end
         
         if debug
@@ -671,8 +706,8 @@ for ip = 1:length(polygons)
         end
             
     else %no fracturing        
-        subField(ip).poly(1).x=p(:,1);
-        subField(ip).poly(1).y=p(:,2);
+        subField(ip).poly(1).x=polygons(ip).x;
+        subField(ip).poly(1).y=polygons(ip).y;
         [mv,ind]=min(abs(dvals-squeeze(nanmean(shotMapNew(:))))); 
         subField(ip).poly(1).dose=ind;
         subField(ip).poly(1).layer=ceil(polygons(ip).layer/2);       
@@ -680,7 +715,7 @@ for ip = 1:length(polygons)
 
 end
 
-fprintf('Triangulated %d polygons. \n',triCount);
+fprintf('triCount: %d, c1: %d, c2: %d, f1: %d, bc: %d \n',triCount,c1,c2,f1,bc);
 
 dvalsAct=dvals;
 
@@ -725,6 +760,8 @@ for ip=1:length(subField)
                 dxf_polyline(FID,[X(:); X(1)],[Y(:); Y(1)],[Z(:); Z(1)]); %urpec has no duplicate vertices, but dxf files want the same starting and ending vertex.
             end            
             polygons(end+1).p=[X(:) Y(:)]; %Make sure we have column vectors at the end
+            polygons(end).x=X(:);
+            polygons(end).y=Y(:);
             polygons(end).color=ctab{i}; 
             polygons(end).layer=subField(ip).poly(iPoly).layer;
             polygons(end).lineType=1;
@@ -774,7 +811,8 @@ warning(orig_state);
 
 fprintf('urpec is finished.\n')
 
-toc
+T=toc;
+fprintf('Elapsed time is %3.3f seconds. \n',T);
 
 end
 

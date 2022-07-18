@@ -3,7 +3,7 @@ function [e] = psf3(p,x)
 %   
 % This is a fit function. All distance argument are logarithms of actual values.
 % See Proximity Effect in E-beam Lithography at
-% https://nanolithography.gatech.edu/proximity.pdf for more details
+% 1 for more details
 
 alpha=10^p(1); %alpha, forward scattering range
 beta=10^p(2); %beta, reverse scattering range

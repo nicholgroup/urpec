@@ -7,7 +7,7 @@ function [polys,bad] = checkPolys(polys,parent,minArea)
 % polygon. The boolean output bad is true if the areas do not match.
 
 if ~exist('minArea','var')
-    minArea=1e-5; %suitable for when the units are microns
+    minArea=1e-6; %suitable for when the units are microns
 end
 
 for j=(length(polys):-1:1)
@@ -26,7 +26,7 @@ end
 
 %Check that the area of the fractured polygons adds up to the
 %original area
-bad=checkArea(polys,parent);
+bad=checkArea(polys,parent,10*minArea); 
 
 end
 

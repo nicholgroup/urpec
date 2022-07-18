@@ -31,6 +31,7 @@ The required Matlab tooboxes include:
 - Image processing toolbox
 - Statistics and machine learning toolbox
 - Curve fitting toolbox
+- Mapping toolbox
 
 dxflib is (c) Grzegorz Kwiatek. 
 It is distributed here for the sake of completeness. It can be found here:
