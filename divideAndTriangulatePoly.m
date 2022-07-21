@@ -6,18 +6,17 @@ function [polys,bad] = divideAndTriangulatePoly(parent,minArea)
 %the resulting polygons if needed to have all 3 or 4-sided shapes.
 
 if ~exist('minArea','var')
-    minArea=1e-6; %suitable for when the units are microns, which is usually the case for urpec
+    minArea=1e-5; %suitable for when the units are microns, which is usually the case for urpec
 end
 
 %If we have a very complicated polygon, try to split it with
 %DIVIDEXY, so we avoid too many nasty triangles.
-if length(parent.x)>4
-%     ndiv=round(length(parent.x)/4);
-%     polys=DIVIDEXY(parent,ndiv,ndiv);
-    polys=convexify(parent);
-    polys=checkPolys(polys,parent);
-    polys=fixPolys2(polys);
-    polys=checkPolys(polys,parent);
+if length(parent.x>10)
+    ndiv=round(length(parent.x)/4);
+    polys=DIVIDEXY(parent,ndiv,ndiv);
+    polys=polys(:);
+    [polys,bad]=checkPolys(polys,parent,minArea);
+    polys=fixPolys(polys);
     
     %Go through the resulting polygons and triangulate if needed.
     polys2={};
@@ -25,7 +24,7 @@ if length(parent.x)>4
         if length(polys{ipp}.x)>4
             pp=triangulatePoly(polys{ipp});
             [pp,bad]=checkPolys(pp,polys{ipp},minArea);
-            pp=fixPolys2(pp);
+            pp=fixPolys(pp);
             [pp,bad]=checkPolys(pp,polys{ipp},minArea);
             polys2=[polys2 pp];
         else
@@ -36,7 +35,7 @@ if length(parent.x)>4
 else %not so many vertices, so just triangulate
     polys=triangulatePoly(parent);
     [polys,bad]=checkPolys(polys,parent,minArea);
-    polys=fixPolys2(polys);
+    polys=fixPolys(polys);
     [polys,bad]=checkPolys(polys,parent,minArea);
 
 end
