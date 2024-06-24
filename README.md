@@ -21,7 +21,7 @@ Current PSFs available include the following
 If you need a different PSF, you should download Casino, run a simulation, save the data, and run the function casinoPSF2.
 
 Casino can be found here:
-http://www.gel.usherbrooke.ca/casino/What.html
+https://casino.espaceweb.usherbrooke.ca/
 
 An example Casino simulation is included in the "Examples" directory. Open this file in Casino, modify your sample and microscope as necessary, and run the simulation. It should already have the necessary settings enabled, but you need to change the number of electrons. Go to Setting>Set Up Microscope, and change the number of electrons to >2000. Also go to Settings>Run Time Options, and change the number of displayed trajectories to the same number. To change the sample go to Settings>Modify Sample, and change the sample as needed. Note that the top layer of your sample should be called PMMA or MMA in order for the analysis function to work. When the simulation has finished, run casinoPSF2, which extracts point spread function data.
 
