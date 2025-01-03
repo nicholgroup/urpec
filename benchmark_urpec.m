@@ -4,7 +4,6 @@
 pecdir=fileparts(which('urpec'));
 curdir=pwd;
 cd(pecdir);
-
 T=[];
 
 %% urpec logo
@@ -141,7 +140,17 @@ pathnameP='Examples\';
 
 %Display the pattern with doses
 plotFields(fieldsFile);
+%% Dxf has both 2D and 3D polylines present
+psf='PSFGaAs30kV200.mat';
+filenameP='3D_2D.dxf';
+pathnameP='Examples\';
 
+[fieldsFile,T(11)]=urpec_v4(struct('file',[pathnameP filenameP],...
+    'convexify',false,...
+    'psfFile',psf));
+
+%Display the pattern with doses
+plotFields(fieldsFile);
 %%
 round(T')
 fprintf('Passed all tests \n');
