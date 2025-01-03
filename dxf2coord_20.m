@@ -79,6 +79,7 @@ function [lwpolylines,lwpolylayers] =dxf2coord_20(pathname,filename);
 
 % This script is modified by the Nichol Group at the University of
 % Rochester 2019_03_07
+% Edit note: STM20241205: Combination of lwpolys and 3dpolys now works. 
 
 %%%%%%begin%%%%%%%%  get file
 % dir='C:\Users\Nichol\Box Sync\Nichol Group\Fab\*.dxf';
@@ -403,11 +404,26 @@ end
 %%%%%%end%%%%%%  get dxf data
 
 % All lines should actually just be lwpolys
-if ~exist('lwpolylines','var') && exist('threedpolys','var')
-    warning('Converting 3D polylines to 2D polylines');
-    lwpolylines=threedpolys(:,1:3);
-    lwpolylayers=threedpolylayers;
+% if ~exist('lwpolylines','var') && exist('threedpolys','var')
+%     warning('Converting 3D polylines to 2D polylines')
+%     lwpolylines=threedpolys(:,1:3);
+%     lwpolylayers=threedpolylayers;
+% end
+%Edit STM20241205
+% Converting threed3polys to lwpolys. Output is only lwpolys.
+if exist('lwpolylines','var') && exist('threedpolys','var')
+    warning('Both 3D and 2D polys found. Merging...')
+    threedpolys(:,1) = threedpolys(:,1)+length(lwpolylayers); %adjust indexing for concatenation
+    lwpolylines(end+1:end+length(threedpolys),:) = threedpolys; %
+    lwpolylayers(end+1:end+length(threedpolylayers),:) = threedpolylayers;
 end
+
+if ~exist('lwpolylines','var') && exist('threedpolys','var')
+    warning('Only 3d Polys found. Converting to 2D polylines')
+        lwpolylines = threedpolys;
+        lwpolylayers = threedpolylayers;
+end
+
 
 clear a b total fid dxfdata % delete garbage
 
