@@ -1,0 +1,7 @@
+# random stuff
+Examples/*.mat
+Examples/*.dc2
+Examples/*.txt
+Examples/*.bak
+*.asv
+

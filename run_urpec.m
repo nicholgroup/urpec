@@ -21,8 +21,10 @@
 
 %% Step 2: Run urpec with default settings
 
-fieldsFile=urpec_v4(struct('file',[pathnameP filenameP],...
-    'psfFile',psf));
+fieldsFile=urpec_v4(struct('file',[pathnameP filenameP],'psfFile',psf));
+
+%If using NPGS, call 
+%fieldsFile=urpec_v4(struct('file',[pathnameP filenameP],'psfFile',psf,'npgs',true));
 
 %display the fracture pattern
 plotFields(fieldsFile);
